@@ -11,14 +11,14 @@ const STORAGE_KEYS = {
 
 export const useNotebookApp = (currentProjectId?: number) => {
   
-  // --- 1. Global State ---
+  // --- Global State ---
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
   const [user, setUser] = useState({ name: 'Dev User', email: 'dev@example.com' });
   
   const [allChats, setAllChats] = useState<Chat[]>([]);
   const [allSources, setAllSources] = useState<Source[]>(INITIAL_SOURCES);
 
-  // --- 2. Local UI State ---
+  // --- Local UI State ---
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [activeSourceIds, setActiveSourceIds] = useState<number[]>([]);
   const [isSourceMode, setIsSourceMode] = useState(true);
@@ -49,13 +49,25 @@ export const useNotebookApp = (currentProjectId?: number) => {
     return () => clearTimeout(loadData);
   }, []);
 
-  // ... (ส่วน SAVE DATA เหมือนเดิม)
+  // =========================================
+  // SAVE DATA
+  // =========================================
   useEffect(() => { if (!isInitialized) return; localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects)); }, [projects, isInitialized]);
   useEffect(() => { if (!isInitialized) return; localStorage.setItem(STORAGE_KEYS.CHATS, JSON.stringify(allChats)); }, [allChats, isInitialized]);
   useEffect(() => { if (!isInitialized) return; localStorage.setItem(STORAGE_KEYS.SOURCES, JSON.stringify(allSources)); }, [allSources, isInitialized]);
   useEffect(() => { if (!isInitialized) return; if (activeChatId) localStorage.setItem(STORAGE_KEYS.ACTIVE_CHAT, String(activeChatId)); }, [activeChatId, isInitialized]);
 
-  // ... (ส่วน FILTER DATA เหมือนเดิม)
+  // =========================================
+  // COMPUTE & FILTER DATA
+  // =========================================
+  const projectsWithStats = useMemo(() => {
+    return projects.map(p => ({
+      ...p,
+      chatCount: allChats.filter(c => c.projectId === p.id).length,
+      sourceCount: allSources.filter(s => s.projectId === p.id).length
+    }));
+  }, [projects, allChats, allSources]);
+
   const chats = useMemo(() => {
     if (!currentProjectId) return [];
     return allChats.filter(c => c.projectId === currentProjectId);
@@ -66,83 +78,164 @@ export const useNotebookApp = (currentProjectId?: number) => {
     return allSources.filter(s => s.projectId === currentProjectId);
   }, [allSources, currentProjectId]);
 
-  // ... (ส่วน ACTIONS ทั้งหมด เหมือนเดิม) ...
+  // =========================================
+  // ACTIONS
+  // =========================================
+  
   const createProject = (title: string, description: string) => {
     const newId = Date.now();
-    const newProject: Project = { id: newId, title, description, updatedAt: 'Just now', lastVisited: Date.now(), sourceCount: 0, chatCount: 0 };
+    const newProject: Project = {
+      id: newId,
+      title,
+      description,
+      updatedAt: 'Just now',
+      lastVisited: Date.now(),
+      sourceCount: 0,
+      chatCount: 0
+    };
     setProjects(prev => [newProject, ...prev]);
     return newId;
   };
-  const renameProject = (id: number, newTitle: string) => setProjects(prev => prev.map(p => p.id === id ? { ...p, title: newTitle } : p));
+
+  const renameProject = (id: number, newTitle: string) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, title: newTitle } : p));
+  };
+
   const deleteProject = (id: number) => {
     setProjects(prev => prev.filter(p => p.id !== id));
     setAllChats(prev => prev.filter(c => c.projectId !== id));
     setAllSources(prev => prev.filter(s => s.projectId !== id));
   };
-  const simulateAIResponse = (userText: string, currentChatId: number) => {
-    setIsLoading(true);
-    setTimeout(() => {
-        const aiMsg: Message = { id: Date.now() + 1, role: 'assistant', content: `AI Answer regarding "${userText}" using ${isSourceMode ? activeSourceIds.length + ' sources' : 'general knowledge'}.` };
-        setAllChats(prev => {
-            const chat = prev.find(c => c.id === currentChatId);
-            if (!chat) return prev;
-            const updatedChat = { ...chat, messages: [...chat.messages, aiMsg] };
-            return prev.map(c => c.id === currentChatId ? updatedChat : c);
-        });
-        setIsLoading(false);
-    }, 1000);
+
+  const updateProjectLastVisited = (id: number) => {
+    setProjects(prev => {
+        const target = prev.find(p => p.id === id);
+        if (!target) return prev;
+        const updatedProject = { ...target, lastVisited: Date.now() };
+        return [updatedProject, ...prev.filter(p => p.id !== id)];
+    });
   };
-  const createNewChat = () => {
-    if (!currentProjectId) return;
-    const newChat: Chat = { id: Date.now(), projectId: currentProjectId, title: 'New Chat', messages: [], createdAt: new Date() };
-    setAllChats(prev => [newChat, ...prev]);
-    setActiveChatId(newChat.id);
-  };
-  const handleSendMessage = (text: string) => {
-    if (!activeChatId || !text.trim()) return;
-    const newMessage: Message = { id: Date.now(), role: 'user', content: text };
-    setIsLoading(true);
-    setAllChats(prev => prev.map(c => {
-        if (c.id !== activeChatId) return c;
-        const updatedTitle = c.messages.length === 0 ? text.slice(0, 30) : c.title;
-        return { ...c, title: updatedTitle, messages: [...c.messages, newMessage] };
-    }));
-    simulateAIResponse(text, activeChatId);
-  };
-  const handleEditMessage = (msgId: number, newContent: string) => {
-    if (!activeChatId) return;
-    setAllChats(prev => prev.map(c => {
-        if (c.id !== activeChatId) return c;
-        const msgIndex = c.messages.findIndex(m => m.id === msgId);
-        if (msgIndex === -1) return c;
-        const newMessages = c.messages.slice(0, msgIndex);
-        newMessages.push({ ...c.messages[msgIndex], content: newContent });
-        return { ...c, messages: newMessages };
-    }));
-    simulateAIResponse(newContent, activeChatId);
-  };
-  const handleRenameChat = (chatId: number, newTitle: string) => setAllChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle } : c));
-  const handleDeleteChat = (chatId: number) => {
-    setAllChats(prev => prev.filter(c => c.id !== chatId));
-    if (activeChatId === chatId) setActiveChatId(null);
-  };
+
   const addSource = (newSourceData: Omit<Source, 'projectId'>) => {
       if (!currentProjectId) return;
       const newSource: Source = { ...newSourceData, projectId: currentProjectId };
       setAllSources(prev => [newSource, ...prev]);
       setActiveSourceIds(prev => [newSource.id, ...prev]);
   };
+
+  const renameSource = (id: number, newTitle: string) => {
+    setAllSources(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
+  };
+
+  const deleteSource = (id: number) => {
+    setAllSources(prev => prev.filter(s => s.id !== id));
+    setActiveSourceIds(prev => prev.filter(sid => sid !== id));
+  };
+
+  // --- Chat Actions ---
+
+  const simulateAIResponse = (userText: string, currentChatId: number) => {
+    setIsLoading(true);
+    setTimeout(() => {
+        const aiMsg: Message = { 
+            id: Date.now() + 1, 
+            role: 'assistant', 
+            content: `AI Answer regarding "${userText}" using ${isSourceMode ? activeSourceIds.length + ' sources' : 'general knowledge'}.` 
+        };
+        
+        setAllChats(prev => {
+            const chatIndex = prev.findIndex(c => c.id === currentChatId);
+            if (chatIndex === -1) return prev;
+
+            const chat = prev[chatIndex];
+            const updatedChat = { ...chat, messages: [...chat.messages, aiMsg] };
+            
+            // ✅ ย้ายแชทที่ AI ตอบล่าสุดมาไว้บนสุด
+            const otherChats = prev.filter(c => c.id !== currentChatId);
+            return [updatedChat, ...otherChats];
+        });
+        
+        setIsLoading(false);
+    }, 1000);
+  };
+
+  const createNewChat = () => {
+    if (!currentProjectId) return;
+    const newChat: Chat = { id: Date.now(), projectId: currentProjectId, title: 'New Chat', messages: [], createdAt: new Date() };
+    setAllChats(prev => [newChat, ...prev]);
+    setActiveChatId(newChat.id);
+  };
+
+  const handleSendMessage = (text: string) => {
+    if (!activeChatId || !text.trim()) return;
+    
+    const newMessage: Message = { id: Date.now(), role: 'user', content: text };
+    setIsLoading(true);
+
+    setAllChats(prev => {
+        const chatIndex = prev.findIndex(c => c.id === activeChatId);
+        if (chatIndex === -1) return prev;
+
+        const chat = prev[chatIndex];
+        const updatedTitle = chat.messages.length === 0 ? text.slice(0, 30) : chat.title;
+        const updatedChat = { ...chat, title: updatedTitle, messages: [...chat.messages, newMessage] };
+        
+        // ✅ ย้ายแชทที่เพิ่งส่งข้อความมาไว้บนสุด
+        const otherChats = prev.filter(c => c.id !== activeChatId);
+        return [updatedChat, ...otherChats];
+    });
+
+    simulateAIResponse(text, activeChatId);
+  };
+
+  const handleEditMessage = (msgId: number, newContent: string) => {
+    if (!activeChatId) return;
+
+    setAllChats(prev => {
+        const chatIndex = prev.findIndex(c => c.id === activeChatId);
+        if (chatIndex === -1) return prev;
+        const chat = prev[chatIndex];
+
+        const msgIndex = chat.messages.findIndex(m => m.id === msgId);
+        if (msgIndex === -1) return prev;
+
+        const newMessages = chat.messages.slice(0, msgIndex);
+        newMessages.push({ ...chat.messages[msgIndex], content: newContent });
+
+        const updatedChat = { ...chat, messages: newMessages };
+
+        // ✅ ย้ายแชทที่มีการแก้ไขมาไว้บนสุด
+        const otherChats = prev.filter(c => c.id !== activeChatId);
+        return [updatedChat, ...otherChats];
+    });
+
+    simulateAIResponse(newContent, activeChatId);
+  };
+
+  const handleRenameChat = (chatId: number, newTitle: string) => {
+    setAllChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle } : c));
+  };
+
+  const handleDeleteChat = (chatId: number) => {
+    setAllChats(prev => prev.filter(c => c.id !== chatId));
+    if (activeChatId === chatId) setActiveChatId(null);
+  };
+
   const clearAllData = () => {
     localStorage.clear();
     window.location.reload();
   };
 
   return {
-    projects, setProjects, user, setUser, chats, sources,
-    activeChatId, setActiveChatId, activeSourceIds, setActiveSourceIds,
-    isSourceMode, setIsSourceMode, isLoading, isInitialized, // ✅ ส่ง isInitialized ออกไปด้วย
-    createProject, renameProject, deleteProject,
-    createNewChat, handleSendMessage, handleEditMessage, handleRenameChat, handleDeleteChat, addSource,
+    projects: projectsWithStats, user, setUser,
+    chats, sources,
+    activeChatId, setActiveChatId,
+    activeSourceIds, setActiveSourceIds,
+    isSourceMode, setIsSourceMode,
+    isLoading, isInitialized,
+    createProject, renameProject, deleteProject, updateProjectLastVisited,
+    createNewChat, handleSendMessage, handleEditMessage, handleRenameChat, handleDeleteChat,
+    addSource, renameSource, deleteSource,
     clearAllData
   };
 };

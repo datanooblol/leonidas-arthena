@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Atom } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Button, Input } from '../atoms'; 
 import { AuthTemplate } from '../templates/AuthTemplate';
+import Image from 'next/image';
 
 export const LoginPage: React.FC = () => {
   const router = useRouter();
@@ -21,9 +22,15 @@ export const LoginPage: React.FC = () => {
         
         {/* Header / Logo */}
         <div className="flex flex-col items-center mb-8 space-y-2">
-          {/* ปรับเป็น bg-gradient-to-tr ตามมาตรฐาน Tailwind */}
-          <div className="bg-linear-to-tr from-blue-500 to-purple-500 p-3 rounded-xl mb-2 shadow-lg">
-             <Atom className="w-8 h-8 text-white" />
+          <div className=" rounded-xl mb-2">
+             <Image 
+              src="/leonidasArthenaLogo.png" 
+              alt="Leonidas Arthena Logo" 
+              width={80} // w-20 ประมาณ 80px
+              height={80}
+              className="w-20 h-20 object-contain drop-shadow-md" 
+              priority // โหลดทันทีเพราะเป็น LCP
+            />
           </div>
           <h1 className="text-2xl font-medium text-text-main">
             {isLogin ? 'Welcome back' : 'Create an account'}

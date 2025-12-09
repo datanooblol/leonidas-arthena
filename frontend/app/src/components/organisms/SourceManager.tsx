@@ -1,7 +1,10 @@
 'use client';
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Files, FileText, Link as LinkIcon } from 'lucide-react';
-import { Button, Input, Checkbox } from '../atoms';
+import { Plus, Search, Filter, Files, FileText, Link as LinkIcon, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { Button } from '../atoms/Button';
+import { Input } from '../atoms/Input';
+import { Checkbox } from '../atoms/Checkbox';
+import { Dropdown } from '../molecules/Dropdown'; // ✅ Import Dropdown
 import { Source } from '@/types';
 
 interface SourceManagerProps {
@@ -11,6 +14,10 @@ interface SourceManagerProps {
   onToggleSelect: (id: number) => void;
   onToggleAll: (ids: number[]) => void;
   onViewSource: (source: Source) => void;
+  
+  // ✅ รับ Props สำหรับจัดการ Source เพิ่ม
+  onRenameSource: (id: number) => void;
+  onDeleteSource: (id: number) => void;
 }
 
 export const SourceManager: React.FC<SourceManagerProps> = ({ 
@@ -19,7 +26,9 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
   selectedIds, 
   onToggleSelect, 
   onToggleAll, 
-  onViewSource 
+  onViewSource,
+  onRenameSource,
+  onDeleteSource
 }) => {
   const [search, setSearch] = useState('');
   
@@ -74,22 +83,40 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
                <div 
                  key={source.id} 
                  onClick={() => onViewSource(source)}
-                 className="group flex items-center justify-between p-3 rounded-xl hover:bg-bg-element transition-colors cursor-pointer"
+                 className="group flex items-center justify-between p-3 rounded-xl hover:bg-bg-element transition-colors cursor-pointer relative pr-8"
                >
-                 <div className="flex items-center gap-3 min-w-0">
+                 <div className="flex items-center gap-3 min-w-0 flex-1">
+                     {/* Checkbox (Click propagation stop) */}
+                     <div onClick={(e) => e.stopPropagation()}>
+                       <Checkbox 
+                          checked={selectedIds.includes(source.id)} 
+                          onChange={() => onToggleSelect(source.id)} 
+                       />
+                     </div>
+
                      <div className="w-8 h-8 rounded bg-bg-element group-hover:bg-bg-surface flex items-center justify-center text-primary shrink-0 transition-colors">
                         {source.type === 'pdf' ? <FileText size={16} /> : <LinkIcon size={16} />}
                      </div>
-                     <div className="min-w-0">
+                     <div className="min-w-0 flex-1">
                         <h4 className="text-sm font-medium text-text-main truncate">{source.title}</h4>
                         <p className="text-xs text-text-secondary uppercase">{source.type} • {source.date}</p>
                      </div>
                  </div>
-                 <div onClick={(e) => e.stopPropagation()}>
-                   <Checkbox 
-                      checked={selectedIds.includes(source.id)} 
-                      onChange={() => onToggleSelect(source.id)} 
-                   />
+
+                 {/* ✅ Dropdown Menu for Source Actions */}
+                 <div onClick={(e) => e.stopPropagation()} className="ml-2">
+                    <Dropdown 
+                      align="right"
+                      trigger={
+                        <button className="p-1.5 rounded-md text-text-secondary hover:text-text-main hover:bg-bg-surface transition-colors">
+                           <MoreVertical size={16} />
+                        </button>
+                      }
+                      items={[
+                        { label: 'Rename', icon: Edit2, onClick: () => onRenameSource(source.id) },
+                        { label: 'Delete', icon: Trash2, danger: true, onClick: () => onDeleteSource(source.id) }
+                      ]}
+                    />
                  </div>
                </div>
             ))
@@ -101,7 +128,6 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
          <span>{sources.length} sources uploaded</span>
          <div className="flex items-center gap-3">
             <span>Limit: 50</span>
-            {/* Progress bar simulation */}
             <div className="w-16 h-1.5 bg-bg-element rounded-full overflow-hidden">
                 <div 
                     className="h-full bg-primary" 

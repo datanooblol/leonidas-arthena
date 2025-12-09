@@ -1,6 +1,6 @@
 'use client';
 import React from "react";
-import { Menu, Plus, MessageSquare, Edit2, Trash2, Files, Eye } from "lucide-react"; // ลบ X ออก
+import { Menu, Plus, MessageSquare, Edit2, Trash2, Files, Eye } from "lucide-react";
 import { Button } from "../atoms/Button";
 import { Chat, Source } from "@/types";
 
@@ -18,13 +18,11 @@ interface SidebarProps {
   onDeleteChat: (id: number) => void;
   onRenameChat: (id: number) => void;
   onViewSource?: (source: Source) => void;
-  showToggle?: boolean; // ✅ เพิ่ม Prop เพื่อคุมการแสดงปุ่ม Toggle
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   isOpen, toggleOpen, activeTab, setActiveTab, sources, activeSourceIds, chats, activeChatId,
-  onSelectChat, onCreateChat, onDeleteChat, onRenameChat, onViewSource,
-  showToggle = true // ✅ ค่าเริ่มต้นเป็น true (แสดงปุ่ม)
+  onSelectChat, onCreateChat, onDeleteChat, onRenameChat, onViewSource
 }) => {
   const activeSourcesList = sources.filter((s) => activeSourceIds.includes(s.id));
 
@@ -51,33 +49,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
         
         {/* --- Header --- */}
         <div className={`flex items-center border-b border-border h-14 shrink-0 ${isOpen ? "px-0" : "justify-center"}`}>
-          
-          {/* Toggle Button (Desktop Only) */}
-          {/* ✅ แก้ไข: เช็ค showToggle ก่อนแสดงปุ่ม */}
-          {showToggle && (
-            <button 
-              onClick={toggleOpen} 
-              className="w-[60px] h-full hidden md:flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-bg-element transition-colors cursor-pointer shrink-0"
-            >
-              <Menu size={20}/>
-            </button>
-          )}
+          {/* Toggle Button */}
+          <button onClick={toggleOpen} className="w-[60px] h-full hidden md:flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-bg-element transition-colors cursor-pointer shrink-0">
+            <Menu size={20}/>
+          </button>
 
           {/* Tabs Section */}
           <div className={`flex flex-1 overflow-hidden transition-opacity duration-200 ${isOpen ? "opacity-100" : "opacity-0"}`}>
             {isOpen && (
               <div className="flex w-full">
+                {/* ✅ 1. เพิ่ม w-1/2 และ text-center เพื่อให้กว้างเท่ากัน */}
                 <button 
                   onClick={() => setActiveTab("context")} 
-                  className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap ${activeTab === "context" ? "border-primary text-primary" : "border-transparent text-text-secondary hover:text-text-main"}`}
+                  className={`
+                    flex-1 w-1/2 py-3 text-sm font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap text-center
+                    ${activeTab === "context" ? "border-primary text-primary" : "border-transparent text-text-secondary hover:text-text-main"}
+                  `}
                 >
                   Context ({activeSourcesList.length})
                 </button>
+                {/* ✅ 2. เปลี่ยน History -> Chats */}
                 <button 
                   onClick={() => setActiveTab("history")} 
-                  className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap ${activeTab === "history" ? "border-primary text-primary" : "border-transparent text-text-secondary hover:text-text-main"}`}
+                  className={`
+                    flex-1 w-1/2 py-3 text-sm font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap text-center
+                    ${activeTab === "history" ? "border-primary text-primary" : "border-transparent text-text-secondary hover:text-text-main"}
+                  `}
                 >
-                  History
+                  Chats
                 </button>
               </div>
             )}

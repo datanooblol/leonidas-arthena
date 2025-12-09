@@ -49,7 +49,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, i
         </div>
       )}
       
-      <div className={`relative max-w-[85%] md:max-w-[75%] ${isEditing ? 'w-full' : ''}`}>
+      {/* Content Wrapper: เพิ่ม min-w-0 เพื่อป้องกัน flex item ขยายเกิน */}
+      <div className={`relative max-w-[85%] md:max-w-[75%] min-w-0 ${isEditing ? 'w-full' : ''}`}>
         {isEditing ? (
           /* --- EDIT MODE --- */
           <div className="bg-bg-element rounded-2xl p-4 border border-primary">
@@ -77,9 +78,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, i
           </div>
         ) : (
           /* --- VIEW MODE --- */
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             <div className={`
               rounded-2xl p-3 md:p-4 leading-relaxed text-sm md:text-base 
+              wrap-break-word whitespace-pre-wrap
               ${msg.role === 'user' 
                 ? 'bg-bg-element text-text-main rounded-tr-sm' 
                 : 'bg-transparent text-text-main px-0'
