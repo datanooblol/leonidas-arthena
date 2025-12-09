@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/* Tailwind v4 Setup 
+  กำหนด Theme Variables ผ่าน @theme block เพื่อให้เรียกใช้ class ได้ง่ายขึ้น
+  เช่น bg-bg-main แทน bg-[var(--bg-main)] (ถ้าต้องการ) 
+*/
+@theme {
+  /* กำหนด Custom Colors ให้ Tailwind รู้จัก */
+  --color-bg-main: var(--bg-main);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-2: var(--bg-surface-2);
+  --color-bg-element: var(--bg-element);
+  --color-bg-element-hover: var(--bg-element-hover);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-text-main: var(--text-main);
+  --color-text-secondary: var(--text-secondary);
+  --color-danger: var(--danger);
+  --color-input-bg: var(--input-bg);
+  --color-toast-bg: var(--toast-bg);
+  --color-toast-text: var(--toast-text);
+  
+  /* Scrollbar colors (Optional mapping) */
+  --color-scrollbar-thumb: var(--scrollbar-thumb);
+  --color-scrollbar-track: var(--scrollbar-track);
+}
+
+/* Override "dark" variant ของ Tailwind v4 
+  ให้ทำงานเมื่อเจอ attribute [data-theme="dark"] แทน class="dark"
+*/
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ประกาศ CSS Variables สำหรับแต่ละ Theme 
+*/
+@layer base {
+  :root {
+    /* LIGHT MODE COLORS */
+    --bg-main: #ffffff;
+    --bg-surface: #f0f4f9;
+    --bg-surface-2: #ffffff;
+    --bg-element: #e1e5ea;
+    --bg-element-hover: #dbe0e6;
+    --border: #c4c7c5;
+    --primary: #0b57d0;
+    --primary-hover: #0842a0;
+    --text-main: #1f1f1f;
+    --text-secondary: #444746;
+    --danger: #d93025;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --input-bg: #f0f4f9;
+    --toast-bg: #323232;
+    --toast-text: #ffffff;
+    
+    /* Scrollbar */
+    --scrollbar-thumb: #c4c7c5;
+    --scrollbar-thumb-hover: #8e918f;
+    --scrollbar-track: transparent;
+  }
+
+  [data-theme='dark'] {
+    /* DARK MODE COLORS */
+    --bg-main: #131314;
+    --bg-surface: #1E1F20;
+    --bg-surface-2: #1E1F20;
+    --bg-element: #2D2E30;
+    --bg-element-hover: #3C4043;
+    --border: #444746;
+    --primary: #4C8DF6;
+    --primary-hover: #3b71ca;
+    --text-main: #E3E3E3;
+    --text-secondary: #A4A4A4;
+    --danger: #e2b6b3;
+    --shadow-color: rgba(0, 0, 0, 0.4);
+    --input-bg: #1E1F20;
+    --toast-bg: #e3e3e3;
+    --toast-text: #1f1f1f;
+
+    /* Scrollbar */
+    --scrollbar-thumb: #5E5E5E;
+    --scrollbar-thumb-hover: #8E8E8E;
+    --scrollbar-track: rgba(255, 255, 255, 0.02);
+  }
+
+  /* Global Reset & Base Styles */
+  body {
+    @apply bg-[var(--bg-main)] text-[var(--text-main)] transition-colors duration-300;
+  }
+
+  * {
+    @apply border-[var(--border)];
+  }
+}
+
+/* Utilities Class เพิ่มเติม */
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 99px;
+    border: 2px solid var(--bg-main);
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  /* Animation Utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.1s ease-out forwards;
+  }
+  
+  .animate-toast {
+    animation: slideUp 0.3s ease-out forwards;
+  }
+}
+
+/* Keyframes */
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
