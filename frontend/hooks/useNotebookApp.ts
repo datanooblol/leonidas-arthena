@@ -16,7 +16,7 @@ export const useNotebookApp = (currentProjectId?: string) => {
   const [allSources, setAllSources] = useState<Source[]>([]);
 
   // --- Local UI State ---
-  const [activeChatId, setActiveChatId] = useState<number | null>(null);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [activeSourceIds, setActiveSourceIds] = useState<string[]>([]);
   const [isSourceMode, setIsSourceMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,7 +66,7 @@ export const useNotebookApp = (currentProjectId?: string) => {
           setActiveSourceIds(sourcesData.filter(s => s.is_selected).map(s => s.source_id || '0'));
           
           setAllChats(chatsData.map(c => ({
-            id: parseInt(c.chat_session_id || '0'),
+            id: c.chat_session_id || '0',
             projectId: currentProjectId,
             title: c.session_name,
             messages: [],
@@ -241,7 +241,7 @@ export const useNotebookApp = (currentProjectId?: string) => {
 
   // --- Chat Actions ---
 
-  const simulateAIResponse = (userText: string, currentChatId: number) => {
+  const simulateAIResponse = (userText: string, currentChatId: string) => {
     setIsLoading(true);
     setTimeout(() => {
         const aiMsg: Message = { 
@@ -276,7 +276,7 @@ export const useNotebookApp = (currentProjectId?: string) => {
       });
       
       const newChat: Chat = {
-        id: parseInt(response.chat_session_id),
+        id: response.chat_session_id,
         projectId: currentProjectId,
         title: 'New Chat',
         messages: [],
@@ -336,11 +336,18 @@ export const useNotebookApp = (currentProjectId?: string) => {
     simulateAIResponse(newContent, activeChatId);
   };
 
-  const handleRenameChat = (chatId: number, newTitle: string) => {
-    setAllChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle } : c));
+  const handleRenameChat = async (chatId: string, newTitle: string) => {
+    try {
+      //console.log('Calling API to rename chat:', { chatId, newTitle });
+      await chatSessionService.updateName(chatId, newTitle);
+      setAllChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle } : c));
+      //console.log('Chat renamed successfully');
+    } catch (error) {
+      //console.error('Failed to rename chat:', error);
+    }
   };
 
-  const handleDeleteChat = (chatId: number) => {
+  const handleDeleteChat = (chatId: string) => {
     setAllChats(prev => prev.filter(c => c.id !== chatId));
     if (activeChatId === chatId) setActiveChatId(null);
   };

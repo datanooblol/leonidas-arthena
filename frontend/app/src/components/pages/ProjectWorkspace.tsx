@@ -66,10 +66,10 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
   const [viewingSource, setViewingSource] = useState<Source | null>(null);
   const [chatToRename, setChatToRename] = useState<{
-    id: number;
+    id: string;
     title: string;
   } | null>(null);
-  const [chatToDelete, setChatToDelete] = useState<number | null>(null);
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
   const [sourceToRename, setSourceToRename] = useState<{
     id: string;
     title: string;
@@ -247,6 +247,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             <Button
               onClick={() => {
                 if (chatToRename?.title.trim()) {
+                  //console.log('Renaming chat:', { id: chatToRename.id, newTitle: chatToRename.title });
                   handleRenameChat(chatToRename.id, chatToRename.title);
                   setChatToRename(null);
                 }

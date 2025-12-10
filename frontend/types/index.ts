@@ -18,8 +18,8 @@ export interface Message {
 }
 
 export interface Chat {
-  id: number;
-  projectId: number;
+  id: string;
+  projectId: string;
   title: string;
   messages: Message[];
   createdAt: Date;
