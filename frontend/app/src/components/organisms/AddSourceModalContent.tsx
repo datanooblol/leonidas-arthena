@@ -2,11 +2,12 @@
 import React, { useState, useRef } from 'react';
 import { Upload, UploadCloud, Link as LinkIcon, FileText } from 'lucide-react';
 import { Source } from '@/types';
+import { sourceService } from '@/lib/services/sources';
 
 interface AddSourceModalContentProps {
   onClose: () => void;
-  projectId: number; // ✅ 1. รับ projectId เข้ามา
-  onAddSource: (source: Source) => void; // ✅ 2. ส่งออกเป็น Source เต็มๆ (ไม่ต้อง Omit แล้ว)
+  projectId: string;
+  onAddSource: (source: Source) => void;
 }
 
 export const AddSourceModalContent: React.FC<AddSourceModalContentProps> = ({ onClose, projectId, onAddSource }) => {
@@ -23,7 +24,7 @@ export const AddSourceModalContent: React.FC<AddSourceModalContentProps> = ({ on
       const response = await sourceService.uploadFile(projectId, formData);
       
       const newSource: Source = {
-        id: parseInt(response.source_id),
+        id: response.source_id,
         projectId: projectId,
         type: fileType,
         title: file.name,
@@ -81,7 +82,8 @@ export const AddSourceModalContent: React.FC<AddSourceModalContentProps> = ({ on
            <button 
              onClick={() => {
                onAddSource({ 
-                   id: Date.now(), 
+                   id: Date.now().toString(), 
+                   projectId: projectId,
                    type: 'text', 
                    title: 'New Text Source', 
                    date: 'Just now', 

@@ -2,6 +2,7 @@
 import React from 'react';
 import { X, FileText, Link as LinkIcon } from 'lucide-react';
 import { Source } from '@/types';
+import { MetadataViewer } from './MetadataViewer';
 
 interface SourceViewerModalProps {
   source: Source | null;
@@ -54,6 +55,13 @@ export const SourceViewerModal: React.FC<SourceViewerModalProps> = ({ source, is
              <p className="text-text-main leading-relaxed whitespace-pre-wrap">
                {source.content || "No content preview available."}
              </p>
+             
+             {(source.type === 'csv' || source.title.endsWith('.csv')) && (
+               <div>
+                 <p className="text-xs text-text-secondary mb-2">Debug: Showing metadata for {source.title} (type: {source.type})</p>
+                 <MetadataViewer sourceId={source.id} />
+               </div>
+             )}
              
              <div className="my-8 h-px bg-border"></div>
              

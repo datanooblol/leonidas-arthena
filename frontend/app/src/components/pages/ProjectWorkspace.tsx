@@ -23,7 +23,7 @@ import { useNotebookApp } from "@/hooks/useNotebookApp";
 import { Source } from "@/types";
 
 interface ProjectWorkspaceProps {
-  projectId: number;
+  projectId: string;
 }
 
 export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
@@ -34,6 +34,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   const {
     user,
     projects,
+    currentProject,
     activeChatId,
     setActiveChatId,
     chats,
@@ -52,9 +53,8 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     isInitialized,
     renameSource,
     deleteSource,
+    toggleSourceSelection,
   } = useNotebookApp(projectId);
-
-  const currentProject = projects.find((p) => p.id === projectId);
 
   // UI States
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -71,10 +71,10 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   } | null>(null);
   const [chatToDelete, setChatToDelete] = useState<number | null>(null);
   const [sourceToRename, setSourceToRename] = useState<{
-    id: number;
+    id: string;
     title: string;
   } | null>(null);
-  const [sourceToDelete, setSourceToDelete] = useState<number | null>(null);
+  const [sourceToDelete, setSourceToDelete] = useState<string | null>(null);
   const [isProjectInfoOpen, setIsProjectInfoOpen] = useState(false);
 
   const [toast, setToast] = useState({ show: false, message: "" });
@@ -116,7 +116,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
       navbar={
         <Navbar
           user={user}
-          title={currentProject ? currentProject.title : "Loading..."}
+          title={currentProject?.title || "Loading..."}
           onLogout={() => router.push("/")}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           onTitleClick={() => setIsProjectInfoOpen(true)}
@@ -207,21 +207,13 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             sources={sources}
             onOpenModal={() => setIsAddSourceOpen(true)}
             selectedIds={activeSourceIds}
-            onToggleSelect={(id) =>
-              setActiveSourceIds((prev) =>
-                prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-              )
-            }
+            onToggleSelect={(id) => {
+              const isSelected = activeSourceIds.includes(id);
+              toggleSourceSelection(id, !isSelected);
+            }}
             onToggleAll={(ids) => {
-              const allSelected = ids.every((id) =>
-                activeSourceIds.includes(id)
-              );
-              if (allSelected)
-                setActiveSourceIds((prev) =>
-                  prev.filter((id) => !ids.includes(id))
-                );
-              else
-                setActiveSourceIds((prev) => [...new Set([...prev, ...ids])]);
+              const allSelected = ids.every((id) => activeSourceIds.includes(id));
+              ids.forEach(id => toggleSourceSelection(id, !allSelected));
             }}
             onViewSource={setViewingSource}
             onRenameSource={(id) => {

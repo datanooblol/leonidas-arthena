@@ -10,14 +10,13 @@ import { Source } from '@/types';
 interface SourceManagerProps {
   sources: Source[];
   onOpenModal: () => void;
-  selectedIds: number[];
-  onToggleSelect: (id: number) => void;
-  onToggleAll: (ids: number[]) => void;
+  selectedIds: string[];
+  onToggleSelect: (id: string) => void;
+  onToggleAll: (ids: string[]) => void;
   onViewSource: (source: Source) => void;
   
-  // ✅ รับ Props สำหรับจัดการ Source เพิ่ม
-  onRenameSource: (id: number) => void;
-  onDeleteSource: (id: number) => void;
+  onRenameSource: (id: string) => void;
+  onDeleteSource: (id: string) => void;
 }
 
 export const SourceManager: React.FC<SourceManagerProps> = ({ 

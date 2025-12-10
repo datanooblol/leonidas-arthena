@@ -5,18 +5,19 @@ import { sourceService } from '@/lib/services/sources';
 import { chatSessionService } from '@/lib/services/chat_session';
 import { conversationService } from '@/lib/services/conversations';
 
-export const useNotebookApp = (currentProjectId?: number) => {
+export const useNotebookApp = (currentProjectId?: string) => {
   
   // --- Global State ---
   const [projects, setProjects] = useState<Project[]>([]);
   const [user, setUser] = useState({ name: 'User', email: 'user@example.com' });
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
   
   const [allChats, setAllChats] = useState<Chat[]>([]);
   const [allSources, setAllSources] = useState<Source[]>([]);
 
   // --- Local UI State ---
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
-  const [activeSourceIds, setActiveSourceIds] = useState<number[]>([]);
+  const [activeSourceIds, setActiveSourceIds] = useState<string[]>([]);
   const [isSourceMode, setIsSourceMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -29,7 +30,7 @@ export const useNotebookApp = (currentProjectId?: number) => {
       try {
         const projectsData = await projectService.getAll();
         setProjects(projectsData.map(p => ({
-          id: parseInt(p.project_id || '0'),
+          id: p.project_id,
           title: p.project_name,
           description: p.project_description,
           updatedAt: 'Recently',
@@ -39,19 +40,30 @@ export const useNotebookApp = (currentProjectId?: number) => {
         })));
         
         if (currentProjectId) {
-          const [sourcesData, chatsData] = await Promise.all([
+          const [projectData, sourcesData, chatsData] = await Promise.all([
+            projectService.getById(currentProjectId),
             sourceService.getByProject(currentProjectId),
             chatSessionService.getByProject(currentProjectId)
           ]);
           
+          setCurrentProject({
+            id: projectData.project_id,
+            title: projectData.project_name,
+            description: projectData.project_description,
+            createdAt: projectData.created_at,
+            updatedAt: projectData.updated_at
+          });
+          
           setAllSources(sourcesData.map(s => ({
-            id: parseInt(s.source_id || '0'),
+            id: s.source_id || '0',
             projectId: currentProjectId,
             type: s.source_type === 'CSV' ? 'csv' : 'text',
             title: s.source_name,
             date: 'Recently',
             content: 'Source content'
           })));
+          
+          setActiveSourceIds(sourcesData.filter(s => s.is_selected).map(s => s.source_id || '0'));
           
           setAllChats(chatsData.map(c => ({
             id: parseInt(c.chat_session_id || '0'),
@@ -116,24 +128,50 @@ export const useNotebookApp = (currentProjectId?: number) => {
       };
       
       setProjects(prev => [newProject, ...prev]);
-      return parseInt(response.project_id);
+      return response.project_id;
     } catch (error) {
       console.error('Failed to create project:', error);
-      return 0;
+      return '';
     }
   };
 
-  const renameProject = (id: number, newTitle: string) => {
-    setProjects(prev => prev.map(p => p.id === id ? { ...p, title: newTitle } : p));
+  const updateProject = async (id: string, updates: { title?: string; description?: string }) => {
+    try {
+      const currentProject = projects.find(p => p.id === id);
+      if (!currentProject) return;
+      
+      const updateData = {
+        project_name: updates.title ?? currentProject.title,
+        project_description: updates.description ?? currentProject.description
+      };
+      
+      await projectService.update(id, updateData);
+      
+      setProjects(prev => prev.map(p => 
+        p.id === id 
+          ? { 
+              ...p, 
+              ...(updates.title !== undefined && { title: updates.title }),
+              ...(updates.description !== undefined && { description: updates.description })
+            }
+          : p
+      ));
+    } catch (error) {
+      console.error('Failed to update project:', error);
+    }
   };
 
-  const deleteProject = (id: number) => {
+  const renameProject = (id: string, newTitle: string) => {
+    updateProject(id, { title: newTitle });
+  };
+
+  const deleteProject = (id: string) => {
     setProjects(prev => prev.filter(p => p.id !== id));
     setAllChats(prev => prev.filter(c => c.projectId !== id));
     setAllSources(prev => prev.filter(s => s.projectId !== id));
   };
 
-  const updateProjectLastVisited = (id: number) => {
+  const updateProjectLastVisited = (id: string) => {
     setProjects(prev => {
         const target = prev.find(p => p.id === id);
         if (!target) return prev;
@@ -148,13 +186,13 @@ export const useNotebookApp = (currentProjectId?: number) => {
     try {
       const response = await sourceService.createByProject(currentProjectId, {
         source_name: newSourceData.title,
-        source_type: newSourceData.type === 'csv' ? 'CSV' : 'TEXT',
+        source_type: 'csv',
         size: 0,
         source_path: {}
       });
       
       const newSource: Source = {
-        id: parseInt(response.source_id),
+        id: response.source_id,
         projectId: currentProjectId,
         type: newSourceData.type,
         title: newSourceData.title,
@@ -169,13 +207,36 @@ export const useNotebookApp = (currentProjectId?: number) => {
     }
   };
 
-  const renameSource = (id: number, newTitle: string) => {
-    setAllSources(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
+  const renameSource = async (id: string, newTitle: string) => {
+    try {
+      await sourceService.updateName(id, { source_name: newTitle });
+      setAllSources(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
+    } catch (error) {
+      console.error('Failed to rename source:', error);
+    }
   };
 
-  const deleteSource = (id: number) => {
-    setAllSources(prev => prev.filter(s => s.id !== id));
-    setActiveSourceIds(prev => prev.filter(sid => sid !== id));
+  const deleteSource = async (id: string) => {
+    try {
+      await sourceService.delete(id);
+      setAllSources(prev => prev.filter(s => s.id !== id));
+      setActiveSourceIds(prev => prev.filter(sid => sid !== id));
+    } catch (error) {
+      console.error('Failed to delete source:', error);
+    }
+  };
+
+  const toggleSourceSelection = async (id: string, isSelected: boolean) => {
+    try {
+      await sourceService.updateSelection(id, { is_selected: isSelected });
+      if (isSelected) {
+        setActiveSourceIds(prev => [...prev, id]);
+      } else {
+        setActiveSourceIds(prev => prev.filter(sid => sid !== id));
+      }
+    } catch (error) {
+      console.error('Failed to update source selection:', error);
+    }
   };
 
   // --- Chat Actions ---
@@ -290,15 +351,15 @@ export const useNotebookApp = (currentProjectId?: number) => {
   };
 
   return {
-    projects: projectsWithStats, user, setUser,
+    projects: projectsWithStats, user, setUser, currentProject,
     chats, sources,
     activeChatId, setActiveChatId,
     activeSourceIds, setActiveSourceIds,
     isSourceMode, setIsSourceMode,
     isLoading, isInitialized,
-    createProject, renameProject, deleteProject, updateProjectLastVisited,
+    createProject, updateProject, renameProject, deleteProject, updateProjectLastVisited,
     createNewChat, handleSendMessage, handleEditMessage, handleRenameChat, handleDeleteChat,
-    addSource, renameSource, deleteSource,
+    addSource, renameSource, deleteSource, toggleSourceSelection,
     clearAllData
   };
 };

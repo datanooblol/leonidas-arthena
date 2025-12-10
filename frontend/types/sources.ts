@@ -1,6 +1,6 @@
 export interface Source {
-  id: number;
-  projectId: number;
+  id: string;
+  projectId: string;
   title: string;
   type: 'pdf' | 'website' | 'text' | 'file' | 'csv';
   content?: string;
@@ -9,7 +9,7 @@ export interface Source {
 
 export interface CreateSourceRequest {
   source_name: string;
-  source_type: 'PDF' | 'TEXT' | 'CSV';
+  source_type: 'csv';
   size: number;
   source_path: Record<string, any>;
 }

@@ -5,7 +5,7 @@ import { use } from 'react';
 export default function Page({ params }: { params: Promise<{ projectId: string }> }) {
   // Unwrap params using React.use()
   const resolvedParams = use(params);
-  const projectId = Number(resolvedParams.projectId);
+  const projectId = resolvedParams.projectId;
 
   return <ProjectWorkspace projectId={projectId} />;
 }
