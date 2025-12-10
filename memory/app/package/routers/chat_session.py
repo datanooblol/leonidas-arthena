@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from package.auth.jwt_auth import verify_token
 from package.data_models import ChatSession
@@ -12,6 +12,9 @@ class ChatSessionRequest(BaseModel):
 
 class ChatSessionResponse(BaseModel):
     chat_session_id:str
+
+class UpdateSessionNameRequest(BaseModel):
+    session_name: str
 
 @router.post("/project/{project_id}", response_model=ChatSessionResponse)
 async def create_chat_session_by_project(
@@ -57,13 +60,14 @@ async def get_chat_session(
 @router.patch("/session-name/{chat_session_id}")
 async def update_chat_session_name(
     chat_session_id: str,
-    session_name:str,
+    request: UpdateSessionNameRequest,
     user_id: str = Depends(verify_token),
     chat_session_repo = Depends(get_chat_session_repo)
 ):
     chat_session = await chat_session_repo.get_by_id(chat_session_id)
     if not chat_session:
         raise HTTPException(status_code=404, detail="Chat session not found")
-    await chat_session_repo.patch(chat_session_id, dict(session_name=session_name))
+    
+    await chat_session_repo.patch(chat_session_id, dict(session_name=request.session_name))
     return {"message": "session_name updated successfully"}
     

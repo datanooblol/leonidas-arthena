@@ -5,3 +5,4 @@ export * from './SourceManager';
 export * from './SourceViewerModal';
 export * from './AddSourceModalContent';
 export * from './MetadataViewer';
+export * from './MetadataEditor';

@@ -1,6 +1,6 @@
 export interface ChatSession {
-  id: number;
-  projectId: number;
+  id: string;
+  projectId: string;
   name: string;
   createdAt: string;
   updatedAt: string;
@@ -16,7 +16,8 @@ export interface Conversation {
 }
 
 export interface CreateChatSessionRequest {
-  name?: string;
+  chat_session_id: string;
+  session_name: string;
 }
 
 export interface UpdateChatSessionNameRequest {

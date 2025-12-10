@@ -118,7 +118,7 @@ export const useNotebookApp = (currentProjectId?: string) => {
       });
       
       const newProject: Project = {
-        id: parseInt(response.project_id),
+        id: response.project_id,
         title,
         description,
         updatedAt: 'Just now',

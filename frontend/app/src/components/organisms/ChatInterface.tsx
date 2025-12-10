@@ -123,9 +123,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         ) : (
           <>
-            {activeChat.messages.map(msg => (
+            {activeChat.messages.map((msg, index) => (
               <ChatMessage 
-                key={msg.id} 
+                key={msg.id || `msg-${index}`} 
                 msg={msg} 
                 onCopy={onCopyMessage} 
                 onEdit={onEditMessage}

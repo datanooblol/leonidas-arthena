@@ -37,8 +37,8 @@ export const DashboardHome: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [renameData, setRenameData] = useState<{ id: number; title: string } | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [renameData, setRenameData] = useState<{ id: string; title: string } | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // ✅ ถ้ายังโหลดข้อมูลไม่เสร็จ ให้แสดง Skeleton Screen แทน FullPageLoader
   if (!isInitialized) {
@@ -69,7 +69,7 @@ export const DashboardHome: React.FC = () => {
     }
   };
 
-  const handleNavigate = (projectId: number) => {
+  const handleNavigate = (projectId: string) => {
     updateProjectLastVisited(projectId);
     router.push(`/dashboard/${projectId}`);
   };

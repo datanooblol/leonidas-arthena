@@ -6,6 +6,7 @@ export * from './chats';
 export * from './references';
 export * from './executions';
 export * from './api';
+export * from './metadata';
 
 // Legacy types for backward compatibility (will be removed later)
 export type Role = 'user' | 'assistant';

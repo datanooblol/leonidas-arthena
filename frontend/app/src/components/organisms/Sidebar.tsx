@@ -112,8 +112,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ) : (
             <div className="space-y-2">
               <Button fullWidth onClick={onCreateChat} icon={Plus} variant="outline" className="mb-4 border-dashed h-10">New Chat</Button>
-              {chats.map((chat) => (
-                <div key={chat.id} onClick={() => onSelectChat(chat.id)} className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between group transition-all ${activeChatId === chat.id ? "bg-primary/10 border-primary" : "bg-bg-main border-border hover:border-text-secondary"}`}>
+              {chats.map((chat, index) => (
+                <div key={chat.id || `chat-${index}`} onClick={() => onSelectChat(chat.id)} className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between group transition-all ${activeChatId === chat.id ? "bg-primary/10 border-primary" : "bg-bg-main border-border hover:border-text-secondary"}`}>
                   <div className="flex items-center gap-3 overflow-hidden">
                     <MessageSquare size={16} className={activeChatId === chat.id ? "text-primary" : "text-text-secondary"} />
                     <span className={`text-sm font-medium truncate ${activeChatId === chat.id ? "text-text-main" : "text-text-secondary"}`}>{chat.title}</span>
