@@ -1,24 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Project, Chat, Source, Message } from '@/types';
-import { INITIAL_PROJECTS, INITIAL_SOURCES } from '@/lib/constants';
-
-const STORAGE_KEYS = {
-  PROJECTS: 'notebook_projects',
-  CHATS: 'notebook_chats',
-  SOURCES: 'notebook_sources',
-  ACTIVE_CHAT: 'notebook_active_chat_id'
-};
+import { projectService } from '@/lib/services/projects';
+import { sourceService } from '@/lib/services/sources';
+import { chatSessionService } from '@/lib/services/chat_session';
+import { conversationService } from '@/lib/services/conversations';
 
 export const useNotebookApp = (currentProjectId?: number) => {
   
-  // --- 1. Global State ---
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
-  const [user, setUser] = useState({ name: 'Dev User', email: 'dev@example.com' });
+  // --- Global State ---
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [user, setUser] = useState({ name: 'User', email: 'user@example.com' });
   
   const [allChats, setAllChats] = useState<Chat[]>([]);
-  const [allSources, setAllSources] = useState<Source[]>(INITIAL_SOURCES);
+  const [allSources, setAllSources] = useState<Source[]>([]);
 
-  // --- 2. Local UI State ---
+  // --- Local UI State ---
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [activeSourceIds, setActiveSourceIds] = useState<number[]>([]);
   const [isSourceMode, setIsSourceMode] = useState(true);
@@ -29,33 +25,65 @@ export const useNotebookApp = (currentProjectId?: number) => {
   // LOAD DATA
   // =========================================
   useEffect(() => {
-    const loadData = setTimeout(() => {
-      const savedProjects = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-      if (savedProjects) setProjects(JSON.parse(savedProjects));
+    const loadData = async () => {
+      try {
+        const projectsData = await projectService.getAll();
+        setProjects(projectsData.map(p => ({
+          id: parseInt(p.project_id || '0'),
+          title: p.project_name,
+          description: p.project_description,
+          updatedAt: 'Recently',
+          lastVisited: Date.now(),
+          sourceCount: 0,
+          chatCount: 0
+        })));
+        
+        if (currentProjectId) {
+          const [sourcesData, chatsData] = await Promise.all([
+            sourceService.getByProject(currentProjectId),
+            chatSessionService.getByProject(currentProjectId)
+          ]);
+          
+          setAllSources(sourcesData.map(s => ({
+            id: parseInt(s.source_id || '0'),
+            projectId: currentProjectId,
+            type: s.source_type === 'CSV' ? 'csv' : 'text',
+            title: s.source_name,
+            date: 'Recently',
+            content: 'Source content'
+          })));
+          
+          setAllChats(chatsData.map(c => ({
+            id: parseInt(c.chat_session_id || '0'),
+            projectId: currentProjectId,
+            title: c.session_name,
+            messages: [],
+            createdAt: new Date()
+          })));
+        }
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+    
+    loadData();
+  }, [currentProjectId]);
 
-      const savedChats = localStorage.getItem(STORAGE_KEYS.CHATS);
-      if (savedChats) setAllChats(JSON.parse(savedChats));
 
-      const savedSources = localStorage.getItem(STORAGE_KEYS.SOURCES);
-      if (savedSources) setAllSources(JSON.parse(savedSources));
-      else setAllSources(INITIAL_SOURCES);
 
-      const savedActiveChat = localStorage.getItem(STORAGE_KEYS.ACTIVE_CHAT);
-      if (savedActiveChat) setActiveChatId(Number(savedActiveChat));
+  // =========================================
+  // COMPUTE & FILTER DATA
+  // =========================================
+  const projectsWithStats = useMemo(() => {
+    return projects.map(p => ({
+      ...p,
+      chatCount: allChats.filter(c => c.projectId === p.id).length,
+      sourceCount: allSources.filter(s => s.projectId === p.id).length
+    }));
+  }, [projects, allChats, allSources]);
 
-      setIsInitialized(true);
-    }, 0);
-
-    return () => clearTimeout(loadData);
-  }, []);
-
-  // ... (ส่วน SAVE DATA เหมือนเดิม)
-  useEffect(() => { if (!isInitialized) return; localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects)); }, [projects, isInitialized]);
-  useEffect(() => { if (!isInitialized) return; localStorage.setItem(STORAGE_KEYS.CHATS, JSON.stringify(allChats)); }, [allChats, isInitialized]);
-  useEffect(() => { if (!isInitialized) return; localStorage.setItem(STORAGE_KEYS.SOURCES, JSON.stringify(allSources)); }, [allSources, isInitialized]);
-  useEffect(() => { if (!isInitialized) return; if (activeChatId) localStorage.setItem(STORAGE_KEYS.ACTIVE_CHAT, String(activeChatId)); }, [activeChatId, isInitialized]);
-
-  // ... (ส่วน FILTER DATA เหมือนเดิม)
   const chats = useMemo(() => {
     if (!currentProjectId) return [];
     return allChats.filter(c => c.projectId === currentProjectId);
@@ -66,83 +94,211 @@ export const useNotebookApp = (currentProjectId?: number) => {
     return allSources.filter(s => s.projectId === currentProjectId);
   }, [allSources, currentProjectId]);
 
-  // ... (ส่วน ACTIONS ทั้งหมด เหมือนเดิม) ...
-  const createProject = (title: string, description: string) => {
-    const newId = Date.now();
-    const newProject: Project = { id: newId, title, description, updatedAt: 'Just now', lastVisited: Date.now(), sourceCount: 0, chatCount: 0 };
-    setProjects(prev => [newProject, ...prev]);
-    return newId;
+  // =========================================
+  // ACTIONS
+  // =========================================
+  
+  const createProject = async (title: string, description: string) => {
+    try {
+      const response = await projectService.create({
+        project_name: title,
+        project_description: description
+      });
+      
+      const newProject: Project = {
+        id: parseInt(response.project_id),
+        title,
+        description,
+        updatedAt: 'Just now',
+        lastVisited: Date.now(),
+        sourceCount: 0,
+        chatCount: 0
+      };
+      
+      setProjects(prev => [newProject, ...prev]);
+      return parseInt(response.project_id);
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      return 0;
+    }
   };
-  const renameProject = (id: number, newTitle: string) => setProjects(prev => prev.map(p => p.id === id ? { ...p, title: newTitle } : p));
+
+  const renameProject = (id: number, newTitle: string) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, title: newTitle } : p));
+  };
+
   const deleteProject = (id: number) => {
     setProjects(prev => prev.filter(p => p.id !== id));
     setAllChats(prev => prev.filter(c => c.projectId !== id));
     setAllSources(prev => prev.filter(s => s.projectId !== id));
   };
+
+  const updateProjectLastVisited = (id: number) => {
+    setProjects(prev => {
+        const target = prev.find(p => p.id === id);
+        if (!target) return prev;
+        const updatedProject = { ...target, lastVisited: Date.now() };
+        return [updatedProject, ...prev.filter(p => p.id !== id)];
+    });
+  };
+
+  const addSource = async (newSourceData: Omit<Source, 'projectId'>) => {
+    if (!currentProjectId) return;
+    
+    try {
+      const response = await sourceService.createByProject(currentProjectId, {
+        source_name: newSourceData.title,
+        source_type: newSourceData.type === 'csv' ? 'CSV' : 'TEXT',
+        size: 0,
+        source_path: {}
+      });
+      
+      const newSource: Source = {
+        id: parseInt(response.source_id),
+        projectId: currentProjectId,
+        type: newSourceData.type,
+        title: newSourceData.title,
+        date: 'Just now',
+        content: newSourceData.content
+      };
+      
+      setAllSources(prev => [newSource, ...prev]);
+      setActiveSourceIds(prev => [newSource.id, ...prev]);
+    } catch (error) {
+      console.error('Failed to add source:', error);
+    }
+  };
+
+  const renameSource = (id: number, newTitle: string) => {
+    setAllSources(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
+  };
+
+  const deleteSource = (id: number) => {
+    setAllSources(prev => prev.filter(s => s.id !== id));
+    setActiveSourceIds(prev => prev.filter(sid => sid !== id));
+  };
+
+  // --- Chat Actions ---
+
   const simulateAIResponse = (userText: string, currentChatId: number) => {
     setIsLoading(true);
     setTimeout(() => {
-        const aiMsg: Message = { id: Date.now() + 1, role: 'assistant', content: `AI Answer regarding "${userText}" using ${isSourceMode ? activeSourceIds.length + ' sources' : 'general knowledge'}.` };
+        const aiMsg: Message = { 
+            id: Date.now() + 1, 
+            role: 'assistant', 
+            content: `AI Answer regarding "${userText}" using ${isSourceMode ? activeSourceIds.length + ' sources' : 'general knowledge'}.` 
+        };
+        
         setAllChats(prev => {
-            const chat = prev.find(c => c.id === currentChatId);
-            if (!chat) return prev;
+            const chatIndex = prev.findIndex(c => c.id === currentChatId);
+            if (chatIndex === -1) return prev;
+
+            const chat = prev[chatIndex];
             const updatedChat = { ...chat, messages: [...chat.messages, aiMsg] };
-            return prev.map(c => c.id === currentChatId ? updatedChat : c);
+            
+            // ✅ ย้ายแชทที่ AI ตอบล่าสุดมาไว้บนสุด
+            const otherChats = prev.filter(c => c.id !== currentChatId);
+            return [updatedChat, ...otherChats];
         });
+        
         setIsLoading(false);
     }, 1000);
   };
-  const createNewChat = () => {
+
+  const createNewChat = async () => {
     if (!currentProjectId) return;
-    const newChat: Chat = { id: Date.now(), projectId: currentProjectId, title: 'New Chat', messages: [], createdAt: new Date() };
-    setAllChats(prev => [newChat, ...prev]);
-    setActiveChatId(newChat.id);
+    
+    try {
+      const response = await chatSessionService.createByProject(currentProjectId, {
+        chat_session_id: '',
+        session_name: 'New Chat'
+      });
+      
+      const newChat: Chat = {
+        id: parseInt(response.chat_session_id),
+        projectId: currentProjectId,
+        title: 'New Chat',
+        messages: [],
+        createdAt: new Date()
+      };
+      
+      setAllChats(prev => [newChat, ...prev]);
+      setActiveChatId(newChat.id);
+    } catch (error) {
+      console.error('Failed to create chat:', error);
+    }
   };
+
   const handleSendMessage = (text: string) => {
     if (!activeChatId || !text.trim()) return;
+    
     const newMessage: Message = { id: Date.now(), role: 'user', content: text };
     setIsLoading(true);
-    setAllChats(prev => prev.map(c => {
-        if (c.id !== activeChatId) return c;
-        const updatedTitle = c.messages.length === 0 ? text.slice(0, 30) : c.title;
-        return { ...c, title: updatedTitle, messages: [...c.messages, newMessage] };
-    }));
+
+    setAllChats(prev => {
+        const chatIndex = prev.findIndex(c => c.id === activeChatId);
+        if (chatIndex === -1) return prev;
+
+        const chat = prev[chatIndex];
+        const updatedTitle = chat.messages.length === 0 ? text.slice(0, 30) : chat.title;
+        const updatedChat = { ...chat, title: updatedTitle, messages: [...chat.messages, newMessage] };
+        
+        // ✅ ย้ายแชทที่เพิ่งส่งข้อความมาไว้บนสุด
+        const otherChats = prev.filter(c => c.id !== activeChatId);
+        return [updatedChat, ...otherChats];
+    });
+
     simulateAIResponse(text, activeChatId);
   };
+
   const handleEditMessage = (msgId: number, newContent: string) => {
     if (!activeChatId) return;
-    setAllChats(prev => prev.map(c => {
-        if (c.id !== activeChatId) return c;
-        const msgIndex = c.messages.findIndex(m => m.id === msgId);
-        if (msgIndex === -1) return c;
-        const newMessages = c.messages.slice(0, msgIndex);
-        newMessages.push({ ...c.messages[msgIndex], content: newContent });
-        return { ...c, messages: newMessages };
-    }));
+
+    setAllChats(prev => {
+        const chatIndex = prev.findIndex(c => c.id === activeChatId);
+        if (chatIndex === -1) return prev;
+        const chat = prev[chatIndex];
+
+        const msgIndex = chat.messages.findIndex(m => m.id === msgId);
+        if (msgIndex === -1) return prev;
+
+        const newMessages = chat.messages.slice(0, msgIndex);
+        newMessages.push({ ...chat.messages[msgIndex], content: newContent });
+
+        const updatedChat = { ...chat, messages: newMessages };
+
+        // ✅ ย้ายแชทที่มีการแก้ไขมาไว้บนสุด
+        const otherChats = prev.filter(c => c.id !== activeChatId);
+        return [updatedChat, ...otherChats];
+    });
+
     simulateAIResponse(newContent, activeChatId);
   };
-  const handleRenameChat = (chatId: number, newTitle: string) => setAllChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle } : c));
+
+  const handleRenameChat = (chatId: number, newTitle: string) => {
+    setAllChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle } : c));
+  };
+
   const handleDeleteChat = (chatId: number) => {
     setAllChats(prev => prev.filter(c => c.id !== chatId));
     if (activeChatId === chatId) setActiveChatId(null);
   };
-  const addSource = (newSourceData: Omit<Source, 'projectId'>) => {
-      if (!currentProjectId) return;
-      const newSource: Source = { ...newSourceData, projectId: currentProjectId };
-      setAllSources(prev => [newSource, ...prev]);
-      setActiveSourceIds(prev => [newSource.id, ...prev]);
-  };
+
   const clearAllData = () => {
     localStorage.clear();
     window.location.reload();
   };
 
   return {
-    projects, setProjects, user, setUser, chats, sources,
-    activeChatId, setActiveChatId, activeSourceIds, setActiveSourceIds,
-    isSourceMode, setIsSourceMode, isLoading, isInitialized, // ✅ ส่ง isInitialized ออกไปด้วย
-    createProject, renameProject, deleteProject,
-    createNewChat, handleSendMessage, handleEditMessage, handleRenameChat, handleDeleteChat, addSource,
+    projects: projectsWithStats, user, setUser,
+    chats, sources,
+    activeChatId, setActiveChatId,
+    activeSourceIds, setActiveSourceIds,
+    isSourceMode, setIsSourceMode,
+    isLoading, isInitialized,
+    createProject, renameProject, deleteProject, updateProjectLastVisited,
+    createNewChat, handleSendMessage, handleEditMessage, handleRenameChat, handleDeleteChat,
+    addSource, renameSource, deleteSource,
     clearAllData
   };
 };

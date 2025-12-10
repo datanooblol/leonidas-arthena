@@ -13,21 +13,29 @@ export const AddSourceModalContent: React.FC<AddSourceModalContentProps> = ({ on
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     const fileType = file.type.includes('pdf') ? 'pdf' : 'text';
     
-    // ✅ 3. สร้าง Source แบบสมบูรณ์ (มี projectId)
-    const newSource: Source = {
-      id: Date.now(),
-      projectId: projectId, // ใส่ ID โปรเจคตรงนี้เลย
-      type: fileType,
-      title: file.name,
-      date: 'Just now',
-      content: `Content of file: ${file.name}\nSize: ${(file.size / 1024).toFixed(2)} KB\nType: ${file.type}` 
-    };
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await sourceService.uploadFile(projectId, formData);
+      
+      const newSource: Source = {
+        id: parseInt(response.source_id),
+        projectId: projectId,
+        type: fileType,
+        title: file.name,
+        date: 'Just now',
+        content: `Uploaded file: ${file.name}`
+      };
 
-    onAddSource(newSource);
-    onClose();
+      onAddSource(newSource);
+      onClose();
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+    }
   };
 
   // ... (Code ส่วน Drag & Drop เหมือนเดิม ไม่ต้องแก้) ...
@@ -72,10 +80,8 @@ export const AddSourceModalContent: React.FC<AddSourceModalContentProps> = ({ on
            <button className="flex items-center justify-center gap-2 p-3.5 rounded-xl border border-border hover:bg-bg-element transition text-text-main text-sm font-medium bg-bg-surface-2 cursor-pointer"><LinkIcon size={18} className="text-primary" /> Link</button>
            <button 
              onClick={() => {
-               // ✅ 4. แก้ Mock Data ตรงปุ่ม Paste Text ด้วย
                onAddSource({ 
                    id: Date.now(), 
-                   projectId: projectId, // ใส่ ID
                    type: 'text', 
                    title: 'New Text Source', 
                    date: 'Just now', 
