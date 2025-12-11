@@ -32,3 +32,18 @@ export interface CreateConversationRequest {
 export interface UpdateConversationRequest {
   content: string;
 }
+
+export interface ChatRequest {
+  project_id: string;
+  chat_session_id: string;
+  model_id: string;
+  content: string;
+  talk_to_data?: boolean;
+}
+
+export interface ChatResponse {
+  model_id: string;
+  role: string;
+  content: string;
+  references?: any[];
+}

@@ -1,6 +1,6 @@
 'use client';
 import React from "react";
-import { Menu, Plus, MessageSquare, Edit2, Trash2, Files, Eye } from "lucide-react";
+import { Menu, Plus, MessageSquare, Edit2, Trash2, Files, Eye, RotateCcw } from "lucide-react";
 import { Button } from "../atoms/Button";
 import { Chat, Source } from "@/types";
 
@@ -17,12 +17,13 @@ interface SidebarProps {
   onCreateChat: () => void;
   onDeleteChat: (id: number) => void;
   onRenameChat: (id: number) => void;
+  onClearChat: (id: number) => void;
   onViewSource?: (source: Source) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   isOpen, toggleOpen, activeTab, setActiveTab, sources, activeSourceIds, chats, activeChatId,
-  onSelectChat, onCreateChat, onDeleteChat, onRenameChat, onViewSource
+  onSelectChat, onCreateChat, onDeleteChat, onRenameChat, onClearChat, onViewSource
 }) => {
   const activeSourcesList = sources.filter((s) => activeSourceIds.includes(s.id));
 
@@ -120,6 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={(e) => { e.stopPropagation(); onRenameChat(chat.id); }} className="p-1.5 hover:bg-bg-element rounded text-text-secondary hover:text-text-main transition-colors cursor-pointer"><Edit2 size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); onClearChat(chat.id); }} className="p-1.5 hover:bg-bg-element rounded text-text-secondary hover:text-warning transition-colors cursor-pointer"><RotateCcw size={12} /></button>
                     <button onClick={(e) => { e.stopPropagation(); onDeleteChat(chat.id); }} className="p-1.5 hover:bg-bg-element rounded text-text-secondary hover:text-danger transition-colors cursor-pointer"><Trash2 size={12} /></button>
                   </div>
                 </div>

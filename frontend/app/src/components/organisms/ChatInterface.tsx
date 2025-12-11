@@ -24,6 +24,9 @@ interface ChatInterfaceProps {
   sourceCount: number;
   onCreateNewChat: () => void;
   isLoading: boolean;
+  availableModels: string[];
+  selectedModel: string;
+  onModelChange: (model: string) => void;
 }
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -38,6 +41,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   sourceCount,
   onCreateNewChat,
   isLoading,
+  availableModels,
+  selectedModel,
+  onModelChange,
 }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -187,22 +193,34 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           />
 
           <div className="flex items-center justify-between px-3 pb-2 md:px-4 md:pb-3">
-            <button
-              onClick={toggleSourceMode}
-              className={`
-                flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer
-                ${isSourceMode
-                  ? "bg-primary/10 text-primary border-primary/20"
-                  : "text-text-secondary border-transparent hover:bg-bg-element"
-                }
-              `}
-            >
-              <CheckCircle2
-                size={14}
-                className={isSourceMode ? "fill-primary" : ""}
-              />
-              {sourceCount} Sources
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleSourceMode}
+                className={`
+                  flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer
+                  ${isSourceMode
+                    ? "bg-primary/10 text-primary border-primary/20"
+                    : "text-text-secondary border-transparent hover:bg-bg-element"
+                  }
+                `}
+              >
+                <CheckCircle2
+                  size={14}
+                  className={isSourceMode ? "fill-primary" : ""}
+                />
+                {sourceCount} Sources
+              </button>
+              
+              <select
+                value={selectedModel}
+                onChange={(e) => onModelChange(e.target.value)}
+                className="px-2 py-1 text-xs bg-bg-element border border-border rounded text-text-main cursor-pointer"
+              >
+                {availableModels.map(model => (
+                  <option key={model} value={model}>{model}</option>
+                ))}
+              </select>
+            </div>
 
             <button
               onClick={onSendMessage}

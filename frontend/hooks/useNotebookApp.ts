@@ -4,6 +4,7 @@ import { projectService } from '@/lib/services/projects';
 import { sourceService } from '@/lib/services/sources';
 import { chatSessionService } from '@/lib/services/chat_session';
 import { conversationService } from '@/lib/services/conversations';
+import { chatService, llmService } from '@/lib/services/chatService';
 
 export const useNotebookApp = (currentProjectId?: string) => {
   
@@ -21,6 +22,8 @@ export const useNotebookApp = (currentProjectId?: string) => {
   const [isSourceMode, setIsSourceMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-4');
 
   // =========================================
   // LOAD DATA
@@ -76,12 +79,50 @@ export const useNotebookApp = (currentProjectId?: string) => {
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
+        // Load available models
+        try {
+          const models = await llmService.getAvailableModels();
+          setAvailableModels(models);
+          if (models.length > 0 && !models.includes(selectedModel)) {
+            setSelectedModel(models[0]);
+          }
+        } catch (error) {
+          console.error('Failed to load models:', error);
+          setAvailableModels(['gpt-4']); // fallback
+        }
+        
         setIsInitialized(true);
       }
     };
     
     loadData();
   }, [currentProjectId]);
+
+  // Load conversations when chat is selected
+  useEffect(() => {
+    const loadConversations = async () => {
+      if (!activeChatId) return;
+      
+      try {
+        const conversations = await conversationService.getByChatSession(activeChatId);
+        const messages: Message[] = conversations.map(c => ({
+          id: c.id,
+          role: c.role as 'user' | 'assistant',
+          content: c.content
+        }));
+        
+        setAllChats(prev => prev.map(chat => 
+          chat.id === activeChatId 
+            ? { ...chat, messages }
+            : chat
+        ));
+      } catch (error) {
+        console.error('Failed to load conversations:', error);
+      }
+    };
+    
+    loadConversations();
+  }, [activeChatId]);
 
 
 
@@ -241,29 +282,62 @@ export const useNotebookApp = (currentProjectId?: string) => {
 
   // --- Chat Actions ---
 
-  const simulateAIResponse = (userText: string, currentChatId: string) => {
+  const sendChatMessage = async (userText: string, currentChatId: string) => {
+    if (!currentProjectId) return;
+    
+    // Add user message immediately
+    const userMessage: Message = {
+      id: Date.now(),
+      role: 'user',
+      content: userText
+    };
+    
+    setAllChats(prev => {
+      const chatIndex = prev.findIndex(c => c.id === currentChatId);
+      if (chatIndex === -1) return prev;
+      
+      const chat = prev[chatIndex];
+      const updatedChat = { ...chat, messages: [...chat.messages, userMessage] };
+      
+      const otherChats = prev.filter(c => c.id !== currentChatId);
+      return [updatedChat, ...otherChats];
+    });
+    
     setIsLoading(true);
-    setTimeout(() => {
-        const aiMsg: Message = { 
-            id: Date.now() + 1, 
-            role: 'assistant', 
-            content: `AI Answer regarding "${userText}" using ${isSourceMode ? activeSourceIds.length + ' sources' : 'general knowledge'}.` 
-        };
+    try {
+      const chatRequest = {
+        project_id: currentProjectId,
+        chat_session_id: currentChatId,
+        model_id: selectedModel,
+        content: userText,
+        talk_to_data: isSourceMode
+      };
+      
+      await chatService.sendMessage(chatRequest);
+      
+      // Reload conversations from memory service
+      const conversations = await conversationService.getByChatSession(currentChatId);
+      const messages: Message[] = conversations.map(c => ({
+        id: c.id,
+        role: c.role as 'user' | 'assistant',
+        content: c.content
+      }));
+      
+      setAllChats(prev => {
+        const chatIndex = prev.findIndex(c => c.id === currentChatId);
+        if (chatIndex === -1) return prev;
         
-        setAllChats(prev => {
-            const chatIndex = prev.findIndex(c => c.id === currentChatId);
-            if (chatIndex === -1) return prev;
-
-            const chat = prev[chatIndex];
-            const updatedChat = { ...chat, messages: [...chat.messages, aiMsg] };
-            
-            // ✅ ย้ายแชทที่ AI ตอบล่าสุดมาไว้บนสุด
-            const otherChats = prev.filter(c => c.id !== currentChatId);
-            return [updatedChat, ...otherChats];
-        });
+        const chat = prev[chatIndex];
+        const updatedChat = { ...chat, messages };
         
-        setIsLoading(false);
-    }, 1000);
+        const otherChats = prev.filter(c => c.id !== currentChatId);
+        return [updatedChat, ...otherChats];
+      });
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const createNewChat = async () => {
@@ -290,50 +364,30 @@ export const useNotebookApp = (currentProjectId?: string) => {
     }
   };
 
-  const handleSendMessage = (text: string) => {
+  const handleSendMessage = async (text: string) => {
     if (!activeChatId || !text.trim()) return;
     
-    const newMessage: Message = { id: Date.now(), role: 'user', content: text };
-    setIsLoading(true);
-
+    // Update title if first message
     setAllChats(prev => {
-        const chatIndex = prev.findIndex(c => c.id === activeChatId);
-        if (chatIndex === -1) return prev;
-
-        const chat = prev[chatIndex];
-        const updatedTitle = chat.messages.length === 0 ? text.slice(0, 30) : chat.title;
-        const updatedChat = { ...chat, title: updatedTitle, messages: [...chat.messages, newMessage] };
-        
-        // ✅ ย้ายแชทที่เพิ่งส่งข้อความมาไว้บนสุด
-        const otherChats = prev.filter(c => c.id !== activeChatId);
-        return [updatedChat, ...otherChats];
+      const chatIndex = prev.findIndex(c => c.id === activeChatId);
+      if (chatIndex === -1) return prev;
+      
+      const chat = prev[chatIndex];
+      const updatedTitle = chat.messages.length === 0 ? text.slice(0, 30) : chat.title;
+      const updatedChat = { ...chat, title: updatedTitle };
+      
+      const otherChats = prev.filter(c => c.id !== activeChatId);
+      return [updatedChat, ...otherChats];
     });
 
-    simulateAIResponse(text, activeChatId);
+    await sendChatMessage(text, activeChatId);
   };
 
-  const handleEditMessage = (msgId: number, newContent: string) => {
+  const handleEditMessage = async (msgId: number, newContent: string) => {
     if (!activeChatId) return;
 
-    setAllChats(prev => {
-        const chatIndex = prev.findIndex(c => c.id === activeChatId);
-        if (chatIndex === -1) return prev;
-        const chat = prev[chatIndex];
-
-        const msgIndex = chat.messages.findIndex(m => m.id === msgId);
-        if (msgIndex === -1) return prev;
-
-        const newMessages = chat.messages.slice(0, msgIndex);
-        newMessages.push({ ...chat.messages[msgIndex], content: newContent });
-
-        const updatedChat = { ...chat, messages: newMessages };
-
-        // ✅ ย้ายแชทที่มีการแก้ไขมาไว้บนสุด
-        const otherChats = prev.filter(c => c.id !== activeChatId);
-        return [updatedChat, ...otherChats];
-    });
-
-    simulateAIResponse(newContent, activeChatId);
+    // For now, just send new message (edit functionality can be enhanced later)
+    await sendChatMessage(newContent, activeChatId);
   };
 
   const handleRenameChat = async (chatId: string, newTitle: string) => {
@@ -352,6 +406,17 @@ export const useNotebookApp = (currentProjectId?: string) => {
     if (activeChatId === chatId) setActiveChatId(null);
   };
 
+  const handleClearChat = async (chatId: string) => {
+    try {
+      await chatSessionService.clearConversations(chatId);
+      setAllChats(prev => prev.map(c => 
+        c.id === chatId ? { ...c, messages: [] } : c
+      ));
+    } catch (error) {
+      console.error('Failed to clear chat:', error);
+    }
+  };
+
   const clearAllData = () => {
     localStorage.clear();
     window.location.reload();
@@ -365,8 +430,11 @@ export const useNotebookApp = (currentProjectId?: string) => {
     isSourceMode, setIsSourceMode,
     isLoading, isInitialized,
     createProject, updateProject, renameProject, deleteProject, updateProjectLastVisited,
-    createNewChat, handleSendMessage, handleEditMessage, handleRenameChat, handleDeleteChat,
+    createNewChat, handleSendMessage, handleEditMessage, handleRenameChat, handleDeleteChat, handleClearChat,
     addSource, renameSource, deleteSource, toggleSourceSelection,
-    clearAllData
+    clearAllData,
+    availableModels,
+    selectedModel,
+    setSelectedModel
   };
 };

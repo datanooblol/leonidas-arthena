@@ -47,6 +47,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     handleEditMessage,
     handleRenameChat,
     handleDeleteChat,
+    handleClearChat,
     isSourceMode,
     setIsSourceMode,
     isLoading,
@@ -54,6 +55,9 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     renameSource,
     deleteSource,
     toggleSourceSelection,
+    availableModels,
+    selectedModel,
+    setSelectedModel,
   } = useNotebookApp(projectId);
 
   // UI States
@@ -147,6 +151,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             if (chat) setChatToRename({ id: chat.id, title: chat.title });
           }}
           onDeleteChat={(id) => setChatToDelete(id)}
+          onClearChat={handleClearChat}
           onViewSource={setViewingSource}
         />
       }
@@ -197,10 +202,16 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             onEditMessage={handleEditMessage}
             onCopyMessage={handleCopyMessage}
             isSourceMode={isSourceMode}
-            toggleSourceMode={() => setIsSourceMode(!isSourceMode)}
+            toggleSourceMode={() => {
+              console.log('Toggle source mode:', !isSourceMode);
+              setIsSourceMode(!isSourceMode);
+            }}
             sourceCount={activeSourceIds.length}
             onCreateNewChat={createNewChat}
             isLoading={isLoading}
+            availableModels={availableModels}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
           />
         ) : (
           <SourceManager
