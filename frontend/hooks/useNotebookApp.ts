@@ -108,7 +108,8 @@ export const useNotebookApp = (currentProjectId?: string) => {
         const messages: Message[] = conversations.map(c => ({
           id: c.id,
           role: c.role as 'user' | 'assistant',
-          content: c.content
+          content: c.content,
+          references: c.references
         }));
         
         setAllChats(prev => prev.map(chat => 
@@ -206,10 +207,15 @@ export const useNotebookApp = (currentProjectId?: string) => {
     updateProject(id, { title: newTitle });
   };
 
-  const deleteProject = (id: string) => {
-    setProjects(prev => prev.filter(p => p.id !== id));
-    setAllChats(prev => prev.filter(c => c.projectId !== id));
-    setAllSources(prev => prev.filter(s => s.projectId !== id));
+  const deleteProject = async (id: string) => {
+    try {
+      await projectService.delete(id);
+      setProjects(prev => prev.filter(p => p.id !== id));
+      setAllChats(prev => prev.filter(c => c.projectId !== id));
+      setAllSources(prev => prev.filter(s => s.projectId !== id));
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+    }
   };
 
   const updateProjectLastVisited = (id: string) => {
@@ -320,7 +326,8 @@ export const useNotebookApp = (currentProjectId?: string) => {
       const messages: Message[] = conversations.map(c => ({
         id: c.id,
         role: c.role as 'user' | 'assistant',
-        content: c.content
+        content: c.content,
+        references: c.references
       }));
       
       setAllChats(prev => {

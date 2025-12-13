@@ -201,6 +201,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             }}
             onEditMessage={handleEditMessage}
             onCopyMessage={handleCopyMessage}
+            onReferenceClick={(ref) => console.log('Reference clicked:', ref)}
             isSourceMode={isSourceMode}
             toggleSourceMode={() => {
               console.log('Toggle source mode:', !isSourceMode);

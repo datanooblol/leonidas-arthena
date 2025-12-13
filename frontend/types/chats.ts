@@ -6,14 +6,7 @@ export interface ChatSession {
   updatedAt: string;
 }
 
-export interface Conversation {
-  id: number;
-  chatSessionId: number;
-  role: 'user' | 'assistant';
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-}
+
 
 export interface CreateChatSessionRequest {
   chat_session_id: string;
@@ -41,9 +34,24 @@ export interface ChatRequest {
   talk_to_data?: boolean;
 }
 
+export interface ChatReference {
+  reference_id: string;
+  type: string;
+}
+
 export interface ChatResponse {
   model_id: string;
   role: string;
   content: string;
-  references?: any[];
+  references?: ChatReference[];
+}
+
+export interface Conversation {
+  id: number;
+  chatSessionId: number;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  references?: ChatReference[];
 }

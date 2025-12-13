@@ -1,16 +1,20 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { Atom, Copy, Edit2, RefreshCw } from 'lucide-react';
-import { Message } from '@/types';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Message, ChatReference } from '@/types';
+import { ReferenceButton } from '../atoms/ReferenceButton';
 
 interface ChatMessageProps {
   msg: Message;
   onEdit?: (id: number, content: string) => void;
   onCopy: (content: string) => void;
+  onReferenceClick?: (reference: ChatReference) => void;
   isLatestUserMessage?: boolean;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, isLatestUserMessage }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, onReferenceClick, isLatestUserMessage }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(msg.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -87,8 +91,27 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, i
                 : 'bg-transparent text-text-main px-0'
               }
             `}>
-              {msg.content}
+              {msg.role === 'assistant' ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {msg.content}
+                </ReactMarkdown>
+              ) : (
+                msg.content
+              )}
             </div>
+
+            {/* References */}
+            {msg.references && msg.references.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {msg.references.map((ref, index) => (
+                  <ReferenceButton
+                    key={`${ref.reference_id}-${index}`}
+                    reference={ref}
+                    onClick={() => {}}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Action Buttons */}
             {msg.role === 'assistant' ? (

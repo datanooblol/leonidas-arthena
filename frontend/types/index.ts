@@ -15,6 +15,7 @@ export interface Message {
   id: number;
   role: Role;
   content: string;
+  references?: ChatReference[];
 }
 
 export interface Chat {

@@ -10,7 +10,7 @@ import {
   Plus,
   Send,
 } from "lucide-react";
-import { Chat } from "@/types";
+import { Chat, ChatReference } from "@/types";
 
 interface ChatInterfaceProps {
   activeChat: Chat | null;
@@ -19,6 +19,7 @@ interface ChatInterfaceProps {
   onSendMessage: () => void;
   onEditMessage: (id: number, content: string) => void;
   onCopyMessage: (content: string) => void;
+  onReferenceClick?: (reference: ChatReference) => void;
   isSourceMode: boolean;
   toggleSourceMode: () => void;
   sourceCount: number;
@@ -36,6 +37,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onSendMessage,
   onEditMessage,
   onCopyMessage,
+  onReferenceClick,
   isSourceMode,
   toggleSourceMode,
   sourceCount,
@@ -135,6 +137,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 msg={msg} 
                 onCopy={onCopyMessage} 
                 onEdit={onEditMessage}
+                onReferenceClick={onReferenceClick}
                 isLatestUserMessage={
                     msg.role === 'user' && 
                     msg.id === activeChat.messages.filter(m => m.role === 'user').pop()?.id
