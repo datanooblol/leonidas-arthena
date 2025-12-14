@@ -19,4 +19,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ipykernel>=7.1.0",
+    "umap-learn",
+    "matplotlib",
+    "plotly",
+    "pandas>=2.3.3",
+    "nbformat>=5.10.4",
 ]
