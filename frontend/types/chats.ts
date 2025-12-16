@@ -46,12 +46,20 @@ export interface ChatResponse {
   references?: ChatReference[];
 }
 
+export interface SQLData {
+  type: 'sql_data';
+  content: {
+    columns: string[];
+    data: any[][];
+  };
+}
+
 export interface Conversation {
-  id: number;
-  chatSessionId: number;
+  created_at: string;
+  updated_at: string;
+  convo_id: string;
+  chat_session_id: string;
   role: 'user' | 'assistant';
   content: string;
-  createdAt: string;
-  updatedAt: string;
   references?: ChatReference[];
 }

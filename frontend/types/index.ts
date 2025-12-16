@@ -12,7 +12,10 @@ export * from './metadata';
 export type Role = 'user' | 'assistant';
 
 export interface Message {
-  id: number;
+  created_at: string;
+  updated_at: string;
+  convo_id: string;
+  chat_session_id: string;
   role: Role;
   content: string;
   references?: ChatReference[];

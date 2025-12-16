@@ -10,7 +10,7 @@ export const useNotebookApp = (currentProjectId?: string) => {
   
   // --- Global State ---
   const [projects, setProjects] = useState<Project[]>([]);
-  const [user, setUser] = useState({ name: 'User', email: 'user@example.com' });
+  const [user, setUser] = useState({ id: 1, name: 'User', email: 'user@example.com' });
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   
   const [allChats, setAllChats] = useState<Chat[]>([]);
@@ -36,6 +36,7 @@ export const useNotebookApp = (currentProjectId?: string) => {
           id: p.project_id,
           title: p.project_name,
           description: p.project_description,
+          createdAt: p.created_at,
           updatedAt: 'Recently',
           lastVisited: Date.now(),
           sourceCount: 0,
@@ -69,11 +70,11 @@ export const useNotebookApp = (currentProjectId?: string) => {
           setActiveSourceIds(sourcesData.filter(s => s.is_selected).map(s => s.source_id || '0'));
           
           setAllChats(chatsData.map(c => ({
-            id: c.chat_session_id || '0',
+            id: c.chat_session_id,
             projectId: currentProjectId,
             title: c.session_name,
             messages: [],
-            createdAt: new Date()
+            createdAt: new Date(c.created_at || new Date())
           })));
         }
       } catch (error) {
@@ -106,7 +107,11 @@ export const useNotebookApp = (currentProjectId?: string) => {
       try {
         const conversations = await conversationService.getByChatSession(activeChatId);
         const messages: Message[] = conversations.map(c => ({
-          id: c.id,
+          id: c.convo_id,
+          created_at: c.created_at,
+          updated_at: c.updated_at,
+          convo_id: c.convo_id,
+          chat_session_id: c.chat_session_id,
           role: c.role as 'user' | 'assistant',
           content: c.content,
           references: c.references
@@ -163,10 +168,8 @@ export const useNotebookApp = (currentProjectId?: string) => {
         id: response.project_id,
         title,
         description,
-        updatedAt: 'Just now',
-        lastVisited: Date.now(),
-        sourceCount: 0,
-        chatCount: 0
+        createdAt: new Date().toISOString(),
+        updatedAt: 'Just now'
       };
       
       setProjects(prev => [newProject, ...prev]);
@@ -256,7 +259,7 @@ export const useNotebookApp = (currentProjectId?: string) => {
 
   const renameSource = async (id: string, newTitle: string) => {
     try {
-      await sourceService.updateName(id, { source_name: newTitle });
+      await sourceService.updateName(id, newTitle);
       setAllSources(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
     } catch (error) {
       console.error('Failed to rename source:', error);
@@ -293,7 +296,10 @@ export const useNotebookApp = (currentProjectId?: string) => {
     
     // Add user message immediately
     const userMessage: Message = {
-      id: Date.now(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      convo_id: Date.now().toString(),
+      chat_session_id: currentChatId,
       role: 'user',
       content: userText
     };
@@ -323,12 +329,18 @@ export const useNotebookApp = (currentProjectId?: string) => {
       
       // Reload conversations from memory service
       const conversations = await conversationService.getByChatSession(currentChatId);
-      const messages: Message[] = conversations.map(c => ({
-        id: c.id,
+      const messages: Message[] = conversations.map((c, index) => ({
+        id: index,
         role: c.role as 'user' | 'assistant',
+        convo_id: c.convo_id,
         content: c.content,
-        references: c.references
+        references: c.references,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+        chat_session_id: c.chat_session_id
       }));
+
+
       
       setAllChats(prev => {
         const chatIndex = prev.findIndex(c => c.id === currentChatId);

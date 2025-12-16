@@ -1,22 +1,31 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
-import { Atom, Copy, Edit2, RefreshCw } from 'lucide-react';
+import { Atom, Copy, Edit2, RefreshCw, BarChart3 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Message, ChatReference } from '@/types';
 import { ReferenceButton } from '../atoms/ReferenceButton';
+import { DataTable } from '../atoms/DataTable';
+import { visualizeService } from '@/lib/services/chatService';
+import dynamic from 'next/dynamic';
+
+const Plot = dynamic(() => import('react-plotly.js'), { ssr: false }) as any;
 
 interface ChatMessageProps {
   msg: Message;
-  onEdit?: (id: number, content: string) => void;
+  onEdit?: (convo_id: string, content: string) => void;
   onCopy: (content: string) => void;
   onReferenceClick?: (reference: ChatReference) => void;
   isLatestUserMessage?: boolean;
+  isLatestAssistantMessage?: boolean;
+  onRegenerate?: () => void;
+  convoId?: string;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, onReferenceClick, isLatestUserMessage }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, onReferenceClick, isLatestUserMessage, isLatestAssistantMessage, onRegenerate, convoId }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(msg.content);
+  const [chartData, setChartData] = useState<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -38,9 +47,38 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
 
   const handleSave = () => {
     if (onEdit && editContent.trim() !== msg.content) {
-      onEdit(msg.id, editContent);
+      onEdit(msg.convo_id, editContent);
     }
     setIsEditing(false);
+    setEditContent(editContent);
+  };
+
+  const hasData = () => {
+    return msg.references?.some(ref => ref.type === 'sql_data') || false;
+  };
+
+  const getPlotlyData = () => {
+    return msg.references?.find(ref => ref.type === 'plotly_data');
+  };
+
+  const handleVisualize = async () => {
+    const actualConvoId = msg.convo_id || convoId;    
+    console.log('msg:', msg);
+    console.log('Using convoId for visualization:', actualConvoId);
+    if (!actualConvoId) return;
+    try {
+      console.log('Making API call...');
+      const response = await visualizeService.createChart(actualConvoId);
+      console.log('Visualize response:', response);
+      console.log('Response type:', response?.type);
+      if (response?.type === 'plotly_data') {
+        console.log('Setting chart data:', response.content);
+        setChartData(response.content);
+      }
+    } catch (error) {
+      console.error('Visualization failed:', error);
+      console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
+    }
   };
 
   return (
@@ -91,14 +129,44 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
                 : 'bg-transparent text-text-main px-0'
               }
             `}>
-              {msg.role === 'assistant' ? (
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {msg.content}
-                </ReactMarkdown>
-              ) : (
-                msg.content
-              )}
+              {(() => {
+                if (msg.role === 'assistant') {
+                  try {
+                    const parsed = JSON.parse(msg.content);
+                    if (parsed.type === 'sql_data') {
+                      return <DataTable columns={parsed.content.columns} data={parsed.content.data} />;
+                    }
+                    if (parsed.type === 'plotly_data') {
+                      return (
+                        <div className="mt-4">
+                          <Plot
+                            data={parsed.content.data}
+                            layout={parsed.content.layout}
+                            config={{ responsive: true }}
+                            style={{ width: '100%', height: '400px' }}
+                          />
+                        </div>
+                      );
+                    }
+                  } catch (e) {
+                    // ไม่ใช่ JSON, แสดงปกติ
+                  }
+                  return <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>;
+                }
+                return editContent;
+              })()}
             </div>
+
+            {(chartData || getPlotlyData()) && (
+              <div className="mt-4 p-4 bg-bg-element rounded-lg">
+                <Plot
+                  data={chartData?.data || getPlotlyData()?.content?.data}
+                  layout={chartData?.layout || getPlotlyData()?.content?.layout}
+                  config={{ responsive: true }}
+                  style={{ width: '100%', height: '400px' }}
+                />
+              </div>
+            )}
 
             {/* References */}
             {msg.references && msg.references.length > 0 && (
@@ -119,9 +187,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
                     <button onClick={() => onCopy(msg.content)} className="p-1.5 rounded-full text-text-secondary hover:bg-bg-element transition-colors cursor-pointer">
                       <Copy size={14} />
                     </button>
-                    <button className="p-1.5 rounded-full text-text-secondary hover:bg-bg-element transition-colors cursor-pointer">
-                      <RefreshCw size={14} />
-                    </button>
+
+                    {hasData() && (
+                      <button onClick={handleVisualize} className="p-1.5 rounded-full text-text-secondary hover:bg-bg-element transition-colors cursor-pointer">
+                        <BarChart3 size={14} />
+                      </button>
+                    )}
+
+                    {isLatestAssistantMessage && (
+                      <button onClick={onRegenerate} className="p-1.5 rounded-full text-text-secondary hover:bg-bg-element transition-colors cursor-pointer">
+                        <RefreshCw size={14} />
+                      </button>
+                    )}
                 </div>
             ) : (
                 <div className="absolute top-2 right-full mr-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -130,7 +207,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
                           <Edit2 size={12} />
                         </button>
                       )}
-                      <button onClick={() => onCopy(msg.content)} className="p-1.5 rounded-full bg-bg-surface border border-border text-text-secondary hover:text-text-main transition-colors cursor-pointer shadow-sm">
+                      <button onClick={() => onCopy(editContent)} className="p-1.5 rounded-full bg-bg-surface border border-border text-text-secondary hover:text-text-main transition-colors cursor-pointer shadow-sm">
                         <Copy size={12} />
                       </button>
                 </div>

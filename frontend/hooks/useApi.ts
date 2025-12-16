@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { projectService } from '@/lib/services/projects';
 import { sourceService } from '@/lib/services/sources';
-import { chatService } from '@/lib/services/chats';
+import { chatSessionService } from '@/lib/services/chat_session';
 import { conversationService } from '@/lib/services/conversations';
-import { Project, Source, ChatSession, Conversation } from '@/types';
+import { Project, Source, ChatSession, Conversation, ProjectApiResponse } from '@/types';
 
-export const useApi = (projectId?: number) => {
+export const useApi = (projectId?: string) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -18,7 +18,14 @@ export const useApi = (projectId?: number) => {
     setIsLoading(true);
     try {
       const data = await projectService.getAll();
-      setProjects(data);
+      const projects = data.map(item => ({
+        id: item.project_id,
+        title: item.project_name,
+        description: item.project_description,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at
+      }));
+      setProjects(projects);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load projects');
     } finally {
@@ -27,7 +34,7 @@ export const useApi = (projectId?: number) => {
   };
 
   // Load sources by project
-  const loadSources = async (projectId: number) => {
+  const loadSources = async (projectId: string) => {
     setIsLoading(true);
     try {
       const data = await sourceService.getByProject(projectId);
@@ -40,10 +47,10 @@ export const useApi = (projectId?: number) => {
   };
 
   // Load chat sessions by project
-  const loadChatSessions = async (projectId: number) => {
+  const loadChatSessions = async (projectId: string) => {
     setIsLoading(true);
     try {
-      const data = await chatService.getByProject(projectId);
+      const data = await chatSessionService.getByProject(projectId);
       setChatSessions(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load chat sessions');
@@ -53,7 +60,7 @@ export const useApi = (projectId?: number) => {
   };
 
   // Load conversations by chat session
-  const loadConversations = async (chatSessionId: number) => {
+  const loadConversations = async (chatSessionId: string) => {
     setIsLoading(true);
     try {
       const data = await conversationService.getByChatSession(chatSessionId);

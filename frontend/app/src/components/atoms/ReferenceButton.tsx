@@ -43,9 +43,43 @@ export const ReferenceButton: React.FC<ReferenceButtonProps> = ({ reference, onC
     }
   };
 
-  const renderContent = (content: string) => {
-    // Check if content is markdown table
-    if (content.includes('|') && content.includes('---')) {
+  const renderContent = (content: any) => {
+    if (!content) {
+      return <div className="text-xs text-text-secondary">No content available</div>;
+    }
+
+    // Handle object content (data structure)
+    if (typeof content === 'object' && content.columns && content.data) {
+      return (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr>
+                {content.columns.map((header: string, i: number) => (
+                  <th key={i} className="text-left px-2 py-1 font-medium text-text-secondary border-b border-border">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {content.data.map((row: any[], i: number) => (
+                <tr key={i}>
+                  {row.map((cell: any, j: number) => (
+                    <td key={j} className="px-2 py-1 text-text-main border-b border-border/20">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    // Handle string content
+    if (typeof content === 'string' && content.includes('|') && content.includes('---')) {
       const lines = content.trim().split('\n');
       const headerLine = lines.find(line => line.includes('|') && !line.includes('---'));
       const separatorIndex = lines.findIndex(line => line.includes('---'));
@@ -86,10 +120,10 @@ export const ReferenceButton: React.FC<ReferenceButtonProps> = ({ reference, onC
       }
     }
     
-    // Default: render as code
+    // Default: render as code or JSON
     return (
       <pre className="text-xs whitespace-pre-wrap break-words text-text-main">
-        {content}
+        {typeof content === 'string' ? content : JSON.stringify(content, null, 2)}
       </pre>
     );
   };
@@ -131,7 +165,7 @@ export const ReferenceButton: React.FC<ReferenceButtonProps> = ({ reference, onC
           <div className="p-3 max-h-60 overflow-y-auto">
             {isLoading ? (
               <div className="text-xs text-text-secondary">Loading...</div>
-            ) : referenceData ? (
+            ) : referenceData?.content ? (
               renderContent(referenceData.content)
             ) : (
               <div className="text-xs text-text-secondary">No data available</div>

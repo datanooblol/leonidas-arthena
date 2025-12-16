@@ -33,10 +33,40 @@ export const useChat = () => {
     }
   };
 
+  const regenerateResponse = async (chatRequest: ChatRequest) => {
+    setIsLoading(true);
+    try {
+      const response = await chatService.regenerateResponse(chatRequest);
+      await loadHistory(chatRequest.chat_session_id);
+      return response;
+    } catch (error) {
+      console.error('Failed to regenerate response:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const editAndRegenerate = async (convoId: string, chatRequest: ChatRequest) => {
+    setIsLoading(true);
+    try {
+      const response = await chatService.editAndRegenerate(convoId, chatRequest);
+      await loadHistory(chatRequest.chat_session_id);
+      return response;
+    } catch (error) {
+      console.error('Failed to edit and regenerate:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     messages,
     isLoading,
     sendMessage,
+    regenerateResponse,
+    editAndRegenerate,
     loadHistory,
   };
 };

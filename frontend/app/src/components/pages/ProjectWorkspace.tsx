@@ -209,10 +209,8 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             }}
             sourceCount={activeSourceIds.length}
             onCreateNewChat={createNewChat}
+            onRegenerate={() => console.log('Regenerate message')}
             isLoading={isLoading}
-            availableModels={availableModels}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
           />
         ) : (
           <SourceManager

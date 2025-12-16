@@ -17,17 +17,15 @@ interface ChatInterfaceProps {
   input: string;
   setInput: (val: string) => void;
   onSendMessage: () => void;
-  onEditMessage: (id: number, content: string) => void;
+  onEditMessage: (convo_id: string, content: string) => void;
   onCopyMessage: (content: string) => void;
   onReferenceClick?: (reference: ChatReference) => void;
   isSourceMode: boolean;
   toggleSourceMode: () => void;
   sourceCount: number;
   onCreateNewChat: () => void;
+  onRegenerate: () => void;
   isLoading: boolean;
-  availableModels: string[];
-  selectedModel: string;
-  onModelChange: (model: string) => void;
 }
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -42,10 +40,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   toggleSourceMode,
   sourceCount,
   onCreateNewChat,
+  onRegenerate,
   isLoading,
-  availableModels,
-  selectedModel,
-  onModelChange,
 }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -131,19 +127,31 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         ) : (
           <>
-            {activeChat.messages.map((msg, index) => (
-              <ChatMessage 
-                key={msg.id || `msg-${index}`} 
-                msg={msg} 
-                onCopy={onCopyMessage} 
-                onEdit={onEditMessage}
-                onReferenceClick={onReferenceClick}
-                isLatestUserMessage={
-                    msg.role === 'user' && 
-                    msg.id === activeChat.messages.filter(m => m.role === 'user').pop()?.id
-                }
-              />
-            ))}
+            {activeChat.messages.map((msg, index) => {
+              const userMessageIndices = activeChat.messages
+                .map((m, i) => m.role === 'user' ? i : -1)
+                .filter(i => i !== -1);
+              const lastUserMessageIndex = userMessageIndices[userMessageIndices.length - 1];
+              
+              const assistantMessageIndices = activeChat.messages
+                .map((m, i) => m.role === 'assistant' ? i : -1)
+                .filter(i => i !== -1);
+              const lastAssistantMessageIndex = assistantMessageIndices[assistantMessageIndices.length - 1];
+              
+              return (
+                <ChatMessage 
+                  key={`${activeChat.id}-msg-${index}`} 
+                  msg={msg} 
+                  onCopy={onCopyMessage} 
+                  onEdit={onEditMessage}
+                  onReferenceClick={onReferenceClick}
+                  isLatestUserMessage={msg.role === 'user' && index === lastUserMessageIndex}
+                  isLatestAssistantMessage={msg.role === 'assistant' && index === lastAssistantMessageIndex}
+                  onRegenerate={onRegenerate}
+                  convoId={activeChat.id}
+                />
+              );
+            })}
 
             {/* Loading Indicator */}
             {isLoading && (
@@ -183,7 +191,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask NotebookAI..."
+            placeholder="Ask Arthena…"
             className="
               w-full bg-transparent border-none rounded-3xl 
               px-4 py-3 md:px-6 md:py-4 
@@ -213,16 +221,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 />
                 {sourceCount} Sources
               </button>
-              
-              <select
-                value={selectedModel}
-                onChange={(e) => onModelChange(e.target.value)}
-                className="px-2 py-1 text-xs bg-bg-element border border-border rounded text-text-main cursor-pointer"
-              >
-                {availableModels.map(model => (
-                  <option key={model} value={model}>{model}</option>
-                ))}
-              </select>
             </div>
 
             <button
