@@ -69,7 +69,7 @@ export const useNotebookApp = (currentProjectId?: string) => {
           
           setActiveSourceIds(sourcesData.filter(s => s.is_selected).map(s => s.source_id || '0'));
           
-          setAllChats(chatsData.map(c => ({
+          setAllChats(chatsData.map((c: any) => ({
             id: c.chat_session_id,
             projectId: currentProjectId,
             title: c.session_name,

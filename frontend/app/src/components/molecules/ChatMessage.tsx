@@ -7,6 +7,7 @@ import { Message, ChatReference } from '@/types';
 import { ReferenceButton } from '../atoms/ReferenceButton';
 import { DataTable } from '../atoms/DataTable';
 import { visualizeService } from '@/lib/services/chatService';
+import { referenceService } from '@/lib/services/references';
 import dynamic from 'next/dynamic';
 
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false }) as any;
@@ -26,20 +27,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(msg.content);
   const [chartData, setChartData] = useState<any>(null);
+  const [showChart, setShowChart] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       const textarea = textareaRef.current;
-
-      // 1. ปรับความสูงอัตโนมัติ
       textarea.style.height = 'auto';
       textarea.style.height = `${textarea.scrollHeight}px`;
-      
-      // 2. สั่ง Focus
       textarea.focus();
-
-      // 3. ย้าย Cursor ไปท้ายประโยค
       const length = textarea.value.length;
       textarea.setSelectionRange(length, length);
     }
@@ -57,44 +53,57 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
     return msg.references?.some(ref => ref.type === 'sql_data') || false;
   };
 
-  const getPlotlyData = () => {
-    return msg.references?.find(ref => ref.type === 'plotly_data');
+  const hasChartRef = () => {
+    return msg.references?.some(ref => ref.type === 'plotly_data') || false;
+  };
+
+  const getDisplayReferences = () => {
+    return msg.references?.filter(ref => ref.type !== 'plotly_data') || [];
+  };
+
+  const loadChartData = async () => {
+    const plotlyRef = msg.references?.find(ref => ref.type === 'plotly_data');
+    if (!plotlyRef) return;
+    
+    try {
+      const refData = await referenceService.getById(plotlyRef.reference_id);
+      setChartData(refData.content);
+    } catch (error) {
+      console.error('Failed to load chart data:', error);
+    }
+  };
+
+  const toggleChart = async () => {
+    if (!showChart && !chartData) {
+      await loadChartData();
+    }
+    setShowChart(!showChart);
   };
 
   const handleVisualize = async () => {
     const actualConvoId = msg.convo_id || convoId;    
-    console.log('msg:', msg);
-    console.log('Using convoId for visualization:', actualConvoId);
     if (!actualConvoId) return;
     try {
-      console.log('Making API call...');
       const response = await visualizeService.createChart(actualConvoId);
-      console.log('Visualize response:', response);
-      console.log('Response type:', response?.type);
       if (response?.type === 'plotly_data') {
-        console.log('Setting chart data:', response.content);
         setChartData(response.content);
       }
     } catch (error) {
       console.error('Visualization failed:', error);
-      console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
   return (
     <div className={`flex gap-3 md:gap-4 max-w-3xl mx-auto group ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
       
-      {/* Avatar (Assistant Only) */}
       {msg.role === 'assistant' && (
         <div className="w-8 h-8 rounded-full bg-linear-to-tr from-blue-500 to-purple-500 shrink-0 flex items-center justify-center mt-1">
           <Atom size={16} className="text-white" />
         </div>
       )}
       
-      {/* Content Wrapper: เพิ่ม min-w-0 เพื่อป้องกัน flex item ขยายเกิน */}
       <div className={`relative max-w-[85%] md:max-w-[75%] min-w-0 ${isEditing ? 'w-full' : ''}`}>
         {isEditing ? (
-          /* --- EDIT MODE --- */
           <div className="bg-bg-element rounded-2xl p-4 border border-primary">
             <textarea 
               ref={textareaRef} 
@@ -119,7 +128,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
             </div>
           </div>
         ) : (
-          /* --- VIEW MODE --- */
           <div className="flex flex-col min-w-0">
             <div className={`
               rounded-2xl p-3 md:p-4 leading-relaxed text-sm md:text-base 
@@ -148,30 +156,27 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
                         </div>
                       );
                     }
-                  } catch (e) {
-                    // ไม่ใช่ JSON, แสดงปกติ
-                  }
+                  } catch (e) {}
                   return <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>;
                 }
                 return editContent;
               })()}
             </div>
 
-            {(chartData || getPlotlyData()) && (
+            {showChart && chartData && (
               <div className="mt-4 p-4 bg-bg-element rounded-lg">
                 <Plot
-                  data={chartData?.data || getPlotlyData()?.content?.data}
-                  layout={chartData?.layout || getPlotlyData()?.content?.layout}
+                  data={chartData.data}
+                  layout={chartData.layout}
                   config={{ responsive: true }}
                   style={{ width: '100%', height: '400px' }}
                 />
               </div>
             )}
 
-            {/* References */}
-            {msg.references && msg.references.length > 0 && (
+            {getDisplayReferences().length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
-                {msg.references.map((ref, index) => (
+                {getDisplayReferences().map((ref, index) => (
                   <ReferenceButton
                     key={`${ref.reference_id}-${index}`}
                     reference={ref}
@@ -181,14 +186,25 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
               </div>
             )}
 
-            {/* Action Buttons */}
+            {hasChartRef() && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                <button
+                  onClick={toggleChart}
+                  className="inline-flex items-center gap-1.5 px-2 py-1 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-md transition-colors cursor-pointer"
+                >
+                  <BarChart3 size={12} />
+                  {showChart ? 'Hide Chart' : 'Show Chart'}
+                </button>
+              </div>
+            )}
+
             {msg.role === 'assistant' ? (
                 <div className="mt-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => onCopy(msg.content)} className="p-1.5 rounded-full text-text-secondary hover:bg-bg-element transition-colors cursor-pointer">
                       <Copy size={14} />
                     </button>
 
-                    {hasData() && (
+                    {hasData() && !hasChartRef() && (
                       <button onClick={handleVisualize} className="p-1.5 rounded-full text-text-secondary hover:bg-bg-element transition-colors cursor-pointer">
                         <BarChart3 size={14} />
                       </button>
