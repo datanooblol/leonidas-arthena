@@ -28,6 +28,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
   const [editContent, setEditContent] = useState(msg.content);
   const [chartData, setChartData] = useState<any>(null);
   const [showChart, setShowChart] = useState(false);
+  const [hasGeneratedChart, setHasGeneratedChart] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -69,7 +70,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
       const refData = await referenceService.getById(plotlyRef.reference_id);
       setChartData(refData.content);
     } catch (error) {
-      console.error('Failed to load chart data:', error);
+      // console.error('Failed to load chart data:', error);
     }
   };
 
@@ -85,11 +86,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
     if (!actualConvoId) return;
     try {
       const response = await visualizeService.createChart(actualConvoId);
-      if (response?.type === 'plotly_data') {
+      // console.log('Visualize response:', response);
+      // console.log('Response structure:', JSON.stringify(response, null, 2));
+      if (response?.content) {
         setChartData(response.content);
+      } else {
+        setChartData(response);
       }
+      setShowChart(true);
+      setHasGeneratedChart(true);
     } catch (error) {
-      console.error('Visualization failed:', error);
+      // console.error('Visualization failed:', error);
     }
   };
 
@@ -174,7 +181,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
               </div>
             )}
 
-            {getDisplayReferences().length > 0 && (
+            {(getDisplayReferences().length > 0 || (hasChartRef() || hasGeneratedChart)) && (
               <div className="flex flex-wrap gap-2 mt-2">
                 {getDisplayReferences().map((ref, index) => (
                   <ReferenceButton
@@ -183,18 +190,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
                     onClick={() => {}}
                   />
                 ))}
-              </div>
-            )}
-
-            {hasChartRef() && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                <button
-                  onClick={toggleChart}
-                  className="inline-flex items-center gap-1.5 px-2 py-1 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-md transition-colors cursor-pointer"
-                >
-                  <BarChart3 size={12} />
-                  {showChart ? 'Hide Chart' : 'Show Chart'}
-                </button>
+                
+                {(hasChartRef() || hasGeneratedChart) && (
+                  <button
+                    onClick={toggleChart}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-md transition-colors cursor-pointer"
+                  >
+                    <BarChart3 size={12} />
+                    {showChart ? 'Hide Chart' : 'Show Chart'}
+                  </button>
+                )}
               </div>
             )}
 
@@ -204,7 +209,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg, onEdit, onCopy, o
                       <Copy size={14} />
                     </button>
 
-                    {hasData() && !hasChartRef() && (
+                    {hasData() && !hasChartRef() && !hasGeneratedChart && (
                       <button onClick={handleVisualize} className="p-1.5 rounded-full text-text-secondary hover:bg-bg-element transition-colors cursor-pointer">
                         <BarChart3 size={14} />
                       </button>

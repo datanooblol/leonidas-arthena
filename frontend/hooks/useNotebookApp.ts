@@ -485,6 +485,65 @@ export const useNotebookApp = (currentProjectId?: string) => {
     }
   };
 
+  const handleRegenerate = async () => {
+    if (!activeChatId || !currentProjectId) return;
+
+    const activeChat = allChats.find(c => c.id === activeChatId);
+    if (!activeChat || activeChat.messages.length === 0) return;
+
+    const userMessages = activeChat.messages.filter(m => m.role === 'user');
+    if (userMessages.length === 0) return;
+
+    const lastUserMessage = userMessages[userMessages.length - 1];
+
+    setAllChats(prev => prev.map(chat => {
+      if (chat.id !== activeChatId) return chat;
+      
+      const messages = chat.messages;
+      const lastUserIndex = messages.findIndex(m => m.convo_id === lastUserMessage.convo_id);
+      if (lastUserIndex === -1) return chat;
+      
+      const filteredMessages = messages.slice(0, lastUserIndex + 1);
+      
+      return { ...chat, messages: filteredMessages };
+    }));
+
+    setIsLoading(true);
+    try {
+      const chatRequest = {
+        project_id: currentProjectId,
+        chat_session_id: activeChatId,
+        model_id: selectedModel,
+        content: lastUserMessage.content,
+        talk_to_data: isSourceMode
+      };
+      
+      await chatService.regenerateResponse(chatRequest);
+      
+      const conversations = await conversationService.getByChatSession(activeChatId);
+      const messages: Message[] = conversations.map((c, index) => ({
+        id: index,
+        role: c.role as 'user' | 'assistant',
+        convo_id: c.convo_id,
+        content: c.content,
+        references: c.references,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+        chat_session_id: c.chat_session_id
+      }));
+
+      setAllChats(prev => prev.map(chat => 
+        chat.id === activeChatId 
+          ? { ...chat, messages }
+          : chat
+      ));
+    } catch (error) {
+      console.error('Failed to regenerate response:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const clearAllData = () => {
     localStorage.clear();
     window.location.reload();
@@ -498,7 +557,7 @@ export const useNotebookApp = (currentProjectId?: string) => {
     isSourceMode, setIsSourceMode,
     isLoading, isInitialized,
     createProject, updateProject, renameProject, deleteProject, updateProjectLastVisited,
-    createNewChat, handleSendMessage, handleEditMessage, handleRenameChat, handleDeleteChat, handleClearChat,
+    createNewChat, handleSendMessage, handleEditMessage, handleRenameChat, handleDeleteChat, handleClearChat, handleRegenerate,
     addSource, renameSource, deleteSource, toggleSourceSelection,
     clearAllData,
     availableModels,

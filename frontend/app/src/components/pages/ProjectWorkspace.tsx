@@ -48,6 +48,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     handleRenameChat,
     handleDeleteChat,
     handleClearChat,
+    handleRegenerate,
     isSourceMode,
     setIsSourceMode,
     isLoading,
@@ -209,7 +210,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             }}
             sourceCount={activeSourceIds.length}
             onCreateNewChat={createNewChat}
-            onRegenerate={() => console.log('Regenerate message')}
+            onRegenerate={handleRegenerate}
             isLoading={isLoading}
           />
         ) : (
