@@ -402,11 +402,60 @@ export const useNotebookApp = (currentProjectId?: string) => {
     await sendChatMessage(text, activeChatId);
   };
 
-  const handleEditMessage = async (msgId: number, newContent: string) => {
-    if (!activeChatId) return;
+  const handleEditMessage = async (convoId: string, newContent: string) => {
+    if (!activeChatId || !currentProjectId) return;
 
-    // For now, just send new message (edit functionality can be enhanced later)
-    await sendChatMessage(newContent, activeChatId);
+    // Remove old assistant response immediately
+    setAllChats(prev => prev.map(chat => {
+      if (chat.id !== activeChatId) return chat;
+      
+      const messages = chat.messages;
+      const userIndex = messages.findIndex(m => m.convo_id === convoId);
+      if (userIndex === -1) return chat;
+      
+      // Keep messages up to and including the edited user message
+      const filteredMessages = messages.slice(0, userIndex + 1);
+      // Update the user message content
+      filteredMessages[userIndex] = { ...filteredMessages[userIndex], content: newContent };
+      
+      return { ...chat, messages: filteredMessages };
+    }));
+
+    setIsLoading(true);
+    try {
+      const chatRequest = {
+        project_id: currentProjectId,
+        chat_session_id: activeChatId,
+        model_id: selectedModel,
+        content: newContent,
+        talk_to_data: isSourceMode
+      };
+      
+      await chatService.editAndRegenerate(convoId, chatRequest);
+      
+      // Reload conversations
+      const conversations = await conversationService.getByChatSession(activeChatId);
+      const messages: Message[] = conversations.map((c, index) => ({
+        id: index,
+        role: c.role as 'user' | 'assistant',
+        convo_id: c.convo_id,
+        content: c.content,
+        references: c.references,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+        chat_session_id: c.chat_session_id
+      }));
+
+      setAllChats(prev => prev.map(chat => 
+        chat.id === activeChatId 
+          ? { ...chat, messages }
+          : chat
+      ));
+    } catch (error) {
+      console.error('Failed to edit message:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRenameChat = async (chatId: string, newTitle: string) => {
