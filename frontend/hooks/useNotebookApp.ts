@@ -55,7 +55,10 @@ export const useNotebookApp = (currentProjectId?: string) => {
             title: projectData.project_name,
             description: projectData.project_description,
             createdAt: projectData.created_at,
-            updatedAt: projectData.updated_at
+            updatedAt: projectData.updated_at,
+            sourceCount: 0,
+            chatCount: 0,
+            lastVisited: Date.now()
           });
           
           setAllSources(sourcesData.map(s => ({
@@ -169,7 +172,10 @@ export const useNotebookApp = (currentProjectId?: string) => {
         title,
         description,
         createdAt: new Date().toISOString(),
-        updatedAt: 'Just now'
+        updatedAt: 'Just now',
+        sourceCount: 0,
+        chatCount: 0,
+        lastVisited: Date.now()
       };
       
       setProjects(prev => [newProject, ...prev]);

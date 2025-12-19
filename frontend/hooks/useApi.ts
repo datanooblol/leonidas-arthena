@@ -23,7 +23,10 @@ export const useApi = (projectId?: string) => {
         title: item.project_name,
         description: item.project_description,
         createdAt: item.created_at,
-        updatedAt: item.updated_at
+        updatedAt: item.updated_at,
+        sourceCount: 0,
+        chatCount: 0,
+        lastVisited: Date.now()
       }));
       setProjects(projects);
     } catch (err) {

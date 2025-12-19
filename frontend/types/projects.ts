@@ -4,6 +4,9 @@ export interface Project {
   description: string;
   createdAt: string;
   updatedAt: string;
+  sourceCount: number;
+  chatCount: number;
+  lastVisited: number;
 }
 
 export interface ProjectApiResponse {

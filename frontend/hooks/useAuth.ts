@@ -20,7 +20,7 @@ export const useAuth = () => {
   const login = async (data: LoginRequest) => {
     setIsLoading(true);
     try {
-      const response = await authService.login(data);
+      const response = await authService.login(data) as any;
       localStorage.setItem('auth_token', response.token);
       localStorage.setItem('user_data', JSON.stringify(response.user));
       setUser(response.user);
@@ -36,7 +36,7 @@ export const useAuth = () => {
   const register = async (data: RegisterRequest) => {
     setIsLoading(true);
     try {
-      const response = await authService.register(data);
+      const response = await authService.register(data) as any;
       localStorage.setItem('auth_token', response.token);
       localStorage.setItem('user_data', JSON.stringify(response.user));
       setUser(response.user);
