@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, UploadCloud, Link as LinkIcon, FileText } from 'lucide-react';
 import { Source } from '@/types';
-import { sourceService } from '@/lib/services/sources';
+import { sourceService } from '@/src/services/sources';
 
 interface AddSourceModalContentProps {
   onClose: () => void;

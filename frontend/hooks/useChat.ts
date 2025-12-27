@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { chatService } from '@/lib/services/chatService';
-import { conversationService } from '@/lib/services/conversations';
+import { chatService } from '@/src/services/chatService';
+import { conversationService } from '@/src/services/conversations';
 import { ChatRequest, Conversation } from '@/types';
 
 export const useChat = () => {

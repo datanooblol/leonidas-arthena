@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { projectService } from '@/lib/services/projects';
-import { sourceService } from '@/lib/services/sources';
-import { chatSessionService } from '@/lib/services/chat_session';
-import { conversationService } from '@/lib/services/conversations';
+import { projectService } from '@/src/services/projects';
+import { sourceService } from '@/src/services/sources';
+import { chatSessionService } from '@/src/services/chat_session';
+import { conversationService } from '@/src/services/conversations';
 import { Project, Source, ChatSession, Conversation, ProjectApiResponse } from '@/types';
 
 export const useApi = (projectId?: string) => {

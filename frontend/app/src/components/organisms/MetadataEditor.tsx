@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Database, Edit2, Save, X } from 'lucide-react';
 import { MetadataRequest } from '@/types';
-import { metadataService } from '@/lib/services/metadata';
+import { metadataService } from '@/src/services/metadata';
 
 interface MetadataEditorProps {
   sourceId: string;

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Sparkles } from 'lucide-react';
 import { Button, Input } from '../atoms'; 
 import { AuthTemplate } from '../templates/AuthTemplate';
-import { userService } from '@/lib/services/user';
+import { userService } from '@/src/services/user';
 import Image from 'next/image';
 
 export const LoginPage: React.FC = () => {

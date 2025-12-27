@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { FileText, Database, BarChart3, ChevronDown, X } from 'lucide-react';
 import { ChatReference, Reference } from '@/types';
-import { referenceService } from '@/lib/services/references';
+import { referenceService } from '@/src/services/references';
 
 interface ReferenceButtonProps {
   reference: ChatReference;

@@ -6,8 +6,8 @@ import remarkGfm from 'remark-gfm';
 import { Message, ChatReference } from '@/types';
 import { ReferenceButton } from '../atoms/ReferenceButton';
 import { DataTable } from '../atoms/DataTable';
-import { visualizeService } from '@/lib/services/chatService';
-import { referenceService } from '@/lib/services/references';
+import { visualizeService } from '@/src/services/chatService';
+import { referenceService } from '@/src/services/references';
 import dynamic from 'next/dynamic';
 
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false }) as any;

@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Database, Edit2, Save, X } from 'lucide-react';
-import { metadataService } from '@/lib/services/metadata';
+import { metadataService } from '@/src/services/metadata';
 import { MetadataResponse } from '@/types';
 
 interface MetadataViewerProps {
